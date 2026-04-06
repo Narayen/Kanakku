@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check
+  Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -142,8 +142,12 @@ const Settings: React.FC = () => {
 
   // Render Icon helper
   const renderIcon = (iconName: string, size = 20, className = "") => {
-      const LucideIcon = (Icons as any)[iconName];
-      return LucideIcon ? <LucideIcon size={size} className={className} /> : <Icons.HelpCircle size={size} className={className} />;
+    try {
+      const LucideIcon = (Icons as any)[iconName] || CircleHelp;
+      return <LucideIcon size={size} className={className} />;
+    } catch (e) {
+      return <CircleHelp size={size} className={className} />;
+    }
   };
 
   return (

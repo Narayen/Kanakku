@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Check, Clock, Trash2, AlertCircle } from 'lucide-react';
+import { X, Calendar, Check, Clock, Trash2, AlertCircle, CircleHelp } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { TransactionType, Transaction } from '../types';
@@ -64,15 +64,26 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !bookId || !categoryId) return;
-
-    const numAmount = parseFloat(amount);
-    if (numAmount < 0.01) {
-      showToast("Amount must be at least 0.01", "error");
+    if (!amount || !bookId || !categoryId || !date || !time) {
+      showToast("Please fill all required fields", "error");
       return;
     }
 
-    const dateTime = new Date(`${date}T${time}:00`).toISOString();
+    const numAmount = parseFloat(amount);
+    if (isNaN(numAmount) || numAmount < 0.01) {
+      showToast("Please enter a valid amount", "error");
+      return;
+    }
+
+    let dateTime: string;
+    try {
+      const dt = new Date(`${date}T${time}:00`);
+      if (isNaN(dt.getTime())) throw new Error("Invalid date");
+      dateTime = dt.toISOString();
+    } catch (e) {
+      showToast("Invalid date or time", "error");
+      return;
+    }
 
     if (editTransaction) {
        updateTransaction(editTransaction.id, {
@@ -112,8 +123,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
   
   // Render Icon helper
   const renderIcon = (iconName: string) => {
-      const LucideIcon = (Icons as any)[iconName];
-      return LucideIcon ? <LucideIcon size={20} /> : <Icons.HelpCircle size={20} />;
+    try {
+      const LucideIcon = (Icons as any)[iconName] || CircleHelp;
+      return <LucideIcon size={20} />;
+    } catch (e) {
+      return <CircleHelp size={20} />;
+    }
   };
 
   return (

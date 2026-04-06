@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, FolderOpen, ArrowLeft, Trash2, AlertTriangle, Pencil, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { Plus, FolderOpen, ArrowLeft, Trash2, AlertTriangle, Pencil, TrendingUp, TrendingDown, AlertCircle, CircleHelp } from 'lucide-react';
 import TransactionModal from '../components/TransactionModal';
 import { TransactionType, Transaction } from '../types';
 import { CURRENCIES } from '../constants';
@@ -240,13 +240,20 @@ const Books: React.FC = () => {
                   bookTransactions.map(tx => {
                     const cat = categories.find(c => c.id === tx.categoryId);
                     const dateObj = new Date(tx.date);
-                    const LucideIcon = cat?.icon ? (Icons as any)[cat.icon] : Icons.HelpCircle;
+                    const renderIcon = (iconName: string) => {
+                      try {
+                        const LucideIcon = (Icons as any)[iconName] || CircleHelp;
+                        return <LucideIcon size={16} className={cat?.color?.replace('bg-', 'text-')} />;
+                      } catch (e) {
+                        return <CircleHelp size={16} className={cat?.color?.replace('bg-', 'text-')} />;
+                      }
+                    };
                     
                     return (
                        <div key={tx.id} className="p-4 flex justify-between items-center group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
                            <div className="flex items-center gap-3">
                                <div className={`p-2 rounded-xl ${cat?.color || 'bg-gray-500'} bg-opacity-10 dark:bg-opacity-20 text-current`}>
-                                   {LucideIcon && <LucideIcon size={16} className={cat?.color?.replace('bg-', 'text-')} />}
+                                   {renderIcon(cat?.icon || '')}
                                </div>
                                <div>
                                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">{cat?.name}</p>

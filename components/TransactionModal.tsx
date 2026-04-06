@@ -92,7 +92,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
   };
 
   const selectedBook = myBooks.find(b => b.id === bookId);
-  const currencyInfo = CURRENCIES.find(c => c.code === selectedBook?.currency) || { symbol: '$', code: 'USD' };
+  const currencyInfo = CURRENCIES.find(c => c.code === selectedBook?.currency) || { symbol: '₹', code: 'INR' };
   
   // Render Icon helper
   const renderIcon = (iconName: string) => {

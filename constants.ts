@@ -24,6 +24,22 @@ export const TEXT_COLORS = [
   'text-violet-500', 'text-purple-500', 'text-fuchsia-500', 'text-pink-500'
 ];
 
+export const TEXT_COLOR_NAMES = [
+  { color: 'text-red-500', name: 'Red'},
+  { color: 'text-orange-500', name: 'Orange'},
+  { color: 'text-amber-500', name: 'Amber'},
+  { color: 'text-green-500', name: 'Green'},
+  { color: 'text-emerald-500', name: 'Emerald'},
+  { color: 'text-teal-500', name: 'Teal'},
+  { color: 'text-cyan-500', name: 'Cyan'},
+  { color: 'text-blue-500', name: 'Blue'},
+  { color: 'text-indigo-500', name: 'Indigo'},
+  { color: 'text-violet-500', name: 'Violet'},
+  { color: 'text-purple-500', name: 'Purple'},
+  { color: 'text-fuchsia-500', name: 'Fuchsia'},
+  { color: 'text-pink-500', name: 'Pink'}
+];
+
 export const PROFILE_ICONS = [
   'User', 'Smile', 'Zap', 'Star', 'Heart', 'Crown', 'Coffee', 'Music', 'Sun', 'Moon'
 ];
@@ -35,10 +51,10 @@ export const CATEGORY_ICONS = [
 ];
 
 export const CURRENCIES = [
+  { code: 'INR', symbol: '₹', flag: '🇮🇳', name: 'Indian Rupee' },
   { code: 'USD', symbol: '$', flag: '🇺🇸', name: 'US Dollar' },
   { code: 'EUR', symbol: '€', flag: '🇪🇺', name: 'Euro' },
   { code: 'GBP', symbol: '£', flag: '🇬🇧', name: 'British Pound' },
-  { code: 'INR', symbol: '₹', flag: '🇮🇳', name: 'Indian Rupee' },
   { code: 'JPY', symbol: '¥', flag: '🇯🇵', name: 'Japanese Yen' },
   { code: 'CAD', symbol: 'C$', flag: '🇨🇦', name: 'Canadian Dollar' },
   { code: 'AUD', symbol: 'A$', flag: '🇦🇺', name: 'Australian Dollar' },

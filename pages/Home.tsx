@@ -91,8 +91,8 @@ const Home: React.FC = () => {
   };
 
   const isPrivacy = currentProfile?.isPrivacyMode;
-  // Use Global Currency for total, or fall back to '$'
-  const globalSymbol = CURRENCIES.find(c => c.code === currentProfile?.currency)?.symbol || '$';
+  // Use Global Currency for total, or fall back to '₹'
+  const globalSymbol = CURRENCIES.find(c => c.code === currentProfile?.currency)?.symbol || '₹';
 
   const maskMoney = (amount: number, symbol: string = globalSymbol) => 
     isPrivacy ? '****' : `${symbol}${amount.toFixed(2)}`;
@@ -218,7 +218,7 @@ const Home: React.FC = () => {
                  const dateObj = new Date(tx.date);
                  const book = getBook(tx.bookId);
                  // Individual transaction still shows its book currency for accuracy
-                 const symbol = CURRENCIES.find(c => c.code === book?.currency)?.symbol || '$';
+                 const symbol = CURRENCIES.find(c => c.code === book?.currency)?.symbol || '₹';
                  
                  return (
                  <div key={tx.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">

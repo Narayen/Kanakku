@@ -20,7 +20,7 @@ const Books: React.FC = () => {
   const [isBookFormOpen, setIsBookFormOpen] = useState(false);
   const [editingBookId, setEditingBookId] = useState<string | null>(null); // If set, we are editing
   const [bookName, setBookName] = useState('');
-  const [bookCurrency, setBookCurrency] = useState('USD');
+  const [bookCurrency, setBookCurrency] = useState('INR');
 
   // For delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -35,7 +35,7 @@ const Books: React.FC = () => {
      } else {
          setEditingBookId(null);
          setBookName('');
-         setBookCurrency('USD');
+         setBookCurrency('INR');
      }
      setIsBookFormOpen(true);
   };
@@ -86,7 +86,7 @@ const Books: React.FC = () => {
         return t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount;
     }, 0);
 
-    const currencySymbol = CURRENCIES.find(c => c.code === selectedBook.currency)?.symbol || '$';
+    const currencySymbol = CURRENCIES.find(c => c.code === selectedBook.currency)?.symbol || '₹';
 
     return (
       <div className="animate-fade-in pb-10">
@@ -306,7 +306,7 @@ const Books: React.FC = () => {
                 .filter(t => t.bookId === book.id)
                 .reduce((acc, t) => t.type === TransactionType.INCOME ? acc + t.amount : acc - t.amount, 0);
 
-            const symbol = CURRENCIES.find(c => c.code === book.currency)?.symbol || '$';
+            const symbol = CURRENCIES.find(c => c.code === book.currency)?.symbol || '₹';
 
             return (
                 <button 

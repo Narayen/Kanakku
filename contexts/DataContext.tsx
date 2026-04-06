@@ -25,7 +25,7 @@ const INITIAL_PROFILE: Profile = {
   id: 'default_profile',
   name: 'Main User',
   icon: 'User',
-  currency: 'USD',
+  currency: 'INR',
   isCurrent: true,
   themePreference: 'system',
   isPrivacyMode: false,
@@ -36,7 +36,7 @@ const INITIAL_BOOK: Book = {
   id: 'default_book',
   profileId: 'default_profile',
   name: 'Personal Wallet',
-  currency: 'USD',
+  currency: 'INR',
   color: 'bg-blue-500'
 };
 
@@ -57,11 +57,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...p,
           isPrivacyMode: p.isPrivacyMode ?? false,
           icon: p.icon ?? 'User',
-          currency: p.currency ?? 'USD'
+          currency: p.currency === 'USD' ? 'INR' : (p.currency ?? 'INR')
+      }));
+
+      const loadedBooks = (parsed.books || [INITIAL_BOOK]).map((b: any) => ({
+          ...b,
+          currency: b.currency === 'USD' ? 'INR' : (b.currency ?? 'INR')
       }));
 
       setProfiles(loadedProfiles);
-      setBooks(parsed.books || [INITIAL_BOOK]);
+      setBooks(loadedBooks);
       setTransactions(parsed.transactions || []);
       // Load categories or fallback to default
       setCategories(parsed.categories || DEFAULT_CATEGORIES);
@@ -94,7 +99,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: uuidv4(),
       name,
       icon: 'Smile',
-      currency: 'USD',
+      currency: 'INR',
       isCurrent: true,
       themePreference: 'system',
       isPrivacyMode: false,
@@ -108,7 +113,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       id: uuidv4(),
       profileId: newProfile.id,
       name: 'My Wallet',
-      currency: 'USD',
+      currency: 'INR',
       color: 'bg-emerald-500'
     };
     setBooks(prev => [...prev, newBook]);
@@ -239,24 +244,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!currentProfile) throw new Error("No profile selected");
       const rows = parseCSV(csvText);
       const newTransactions: Transaction[] = [];
+      const newBooks: Book[] = [];
+      const localBooks = [...books];
       let importedCount = 0;
 
       for (const row of rows) {
-        let book = books.find(b => b.name === row['Book'] && b.profileId === currentProfile.id);
+        const bookName = row['Book'] || 'Imported Book';
+        let book = localBooks.find(b => b.name === bookName && b.profileId === currentProfile.id);
+        
         if (!book) {
             const newBookId = uuidv4();
-            const newBook: Book = {
+            book = {
                 id: newBookId,
                 profileId: currentProfile.id,
-                name: row['Book'] || 'Imported Book',
-                currency: currentProfile.currency || 'USD',
+                name: bookName,
+                currency: currentProfile.currency || 'INR',
                 color: 'bg-gray-500'
             };
-            setBooks(prev => [...prev, newBook]);
-            book = newBook;
+            localBooks.push(book);
+            newBooks.push(book);
         }
 
-        const cat = categories.find(c => c.name === row['Category']) || categories[0];
+        const catName = row['Category'] || 'Uncategorized';
+        const cat = categories.find(c => c.name === catName) || categories[0];
         
         if (row['Amount'] && row['Date']) {
             newTransactions.push({
@@ -272,7 +282,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             importedCount++;
         }
       }
+
+      if (newBooks.length > 0) {
+        setBooks(prev => [...prev, ...newBooks]);
+      }
       setTransactions(prev => [...newTransactions, ...prev]);
+      
       return { success: true, message: `Successfully imported ${importedCount} transactions.` };
     } catch (e: any) {
       return { success: false, message: e.message || "Failed to import CSV" };

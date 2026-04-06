@@ -6,7 +6,7 @@ import {
   Trash2, Globe, Layers, AlertTriangle, Plus, X 
 } from 'lucide-react';
 import { 
-  CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS 
+  CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
 } from '../constants';
 import * as Icons from 'lucide-react';
 
@@ -205,7 +205,7 @@ const Settings: React.FC = () => {
                  </label>
                  <div className="relative">
                     <select 
-                        value={currentProfile.currency || 'USD'}
+                        value={currentProfile.currency || 'INR'}
                         onChange={(e) => updateProfileSettings(currentProfile.id, { currency: e.target.value })}
                         className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-3 dark:text-white appearance-none"
                     >
@@ -272,7 +272,9 @@ const Settings: React.FC = () => {
                         onChange={e => setNewCatColor(e.target.value)}
                         className={`bg-white dark:bg-cardbg border-none rounded-lg px-3 py-2 text-sm ${newCatColor}`}
                      >
-                        {TEXT_COLORS.map(c => <option key={c} value={c} className={c}>Color</option>)}
+                        {/* TEXT_COLORS.map(c => <option key={c} value={c} className={c}>Color</option>) */}
+                        {/* TEXT_COLOR_NAMES.map(c => <option key={c} value={c} className={c}>Color</option>) */}
+                        {TEXT_COLOR_NAMES.map(c => (<option key={c.color} value={c.color}>{c.name}</option>))}
                      </select>
                  </div>
                  

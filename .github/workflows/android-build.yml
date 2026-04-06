@@ -38,10 +38,18 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Fix Gradle Wrapper
+        run: |
+          cd android
+          VERSION=$(grep "distributionUrl" gradle/wrapper/gradle-wrapper.properties | grep -oE "[0-9]+\.[0-9]+(\.[0-9]+)?")
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          curl -L "https://raw.githubusercontent.com/gradle/gradle/v${VERSION}/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
+          curl -L "https://raw.githubusercontent.com/gradle/gradle/v${VERSION}/gradlew" -o gradlew
+          chmod +x gradlew
+
       - name: Build APK
         run: |
           cd android
-          chmod +x gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK

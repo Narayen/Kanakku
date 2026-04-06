@@ -419,7 +419,7 @@ const Settings: React.FC = () => {
       {/* Sync */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
          <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
-          <Cloud className="text-blue-500" size={14} /> Google Drive Backup - coming soon...
+          <Cloud className="text-blue-500" size={14} /> Google Drive Backup
         </h3>
         
         <div className="mb-6">

@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  Trash2, Globe, Layers, AlertTriangle, Plus, X 
+  Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -36,7 +36,6 @@ const Settings: React.FC = () => {
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [newProfileName, setNewProfileName] = useState('');
   const [importStatus, setImportStatus] = useState<string>('');
-  const [clientId, setClientId] = useState(currentProfile?.googleClientId || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Category Form State
@@ -44,14 +43,28 @@ const Settings: React.FC = () => {
   const [newCatIcon, setNewCatIcon] = useState('Utensils');
   const [newCatColor, setNewCatColor] = useState(TEXT_COLORS[0]);
 
+  // Profile Editing State
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editingName, setEditingName] = useState(currentProfile?.name || '');
+
   // Reset State
   const [resetConfirmCount, setResetConfirmCount] = useState(0);
+  const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    if(currentProfile?.googleClientId) {
-      setClientId(currentProfile.googleClientId);
+    if(currentProfile) {
+      setEditingName(currentProfile.name);
     }
   }, [currentProfile]);
+
+  const handleUpdateProfileName = (e: React.FormEvent) => {
+    e.preventDefault();
+    if(currentProfile && editingName.trim()) {
+      updateProfileSettings(currentProfile.id, { name: editingName });
+      setIsEditingName(false);
+      showToast("Profile name updated", "success");
+    }
+  };
 
   const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
     if (currentProfile) {
@@ -83,10 +96,9 @@ const Settings: React.FC = () => {
 
   const handleDeleteProfile = () => {
       if(currentProfile && profiles.length > 1) {
-          if(window.confirm(`Delete profile "${currentProfile.name}"? This cannot be undone.`)){
-              deleteProfile(currentProfile.id);
-              showToast("Profile deleted", "info");
-          }
+          deleteProfile(currentProfile.id);
+          setShowProfileDeleteConfirm(false);
+          showToast("Profile deleted", "info");
       } else {
           showToast("Cannot delete the only profile", "error");
       }
@@ -126,14 +138,6 @@ const Settings: React.FC = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSaveClientId = () => {
-    if(currentProfile && clientId) {
-      updateProfileSettings(currentProfile.id, { googleClientId: clientId });
-      initGoogleDrive(clientId);
-      showToast("Client ID Saved");
-    }
-  };
-
   if (!currentProfile) return null;
 
   // Render Icon helper
@@ -144,12 +148,17 @@ const Settings: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-xl text-gray-500">
+          <SettingsIcon size={24} />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
+      </div>
 
       {/* Profile Section */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-white">
-          <User className="text-primary-500" size={20} /> Profiles
+        <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <User className="text-primary-500" size={14} /> Profiles
         </h3>
         
         {/* Profile Switcher */}
@@ -173,18 +182,66 @@ const Settings: React.FC = () => {
              value={newProfileName}
              onChange={e => setNewProfileName(e.target.value)}
              placeholder="New profile name..."
-             className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
+             className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2.5 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
            />
-           <button type="submit" disabled={!newProfileName} className="bg-gray-900 dark:bg-white dark:text-black text-white px-4 py-2 rounded-xl text-sm font-medium disabled:opacity-50">Create</button>
+           <button 
+             type="submit" 
+             disabled={!newProfileName} 
+             className="bg-primary-600 hover:bg-primary-700 text-white p-2.5 rounded-xl transition-all disabled:opacity-50 active:scale-95"
+             title="Create Profile"
+           >
+             <Plus size={20} />
+           </button>
         </form>
 
         {/* Current Profile Settings */}
         <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
-            <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">Current Profile Settings</h4>
+            <h4 className="text-[10px] font-bold text-gray-400 dark:text-gray-500 mb-4 uppercase tracking-widest">Current Profile Settings</h4>
             
+            {/* Profile Name Editing */}
+            <div className="mb-6">
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest ml-1">Profile Name</label>
+                {isEditingName ? (
+                  <form onSubmit={handleUpdateProfileName} className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={editingName}
+                      onChange={e => setEditingName(e.target.value)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 dark:text-white text-sm focus:ring-2 focus:ring-primary-500"
+                      autoFocus
+                    />
+                    <button 
+                      type="submit" 
+                      className="p-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors"
+                      title="Save"
+                    >
+                      <Check size={18} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsEditingName(false); setEditingName(currentProfile.name); }} 
+                      className="p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      title="Cancel"
+                    >
+                      <X size={18} />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
+                    <span className="text-gray-900 dark:text-white font-medium">{currentProfile.name}</span>
+                    <button 
+                      onClick={() => setIsEditingName(true)}
+                      className="p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </div>
+                )}
+            </div>
+
             {/* Icon Picker */}
             <div className="mb-6">
-                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">Profile Icon</label>
+                <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest ml-1">Profile Icon</label>
                 <div className="flex flex-wrap gap-2">
                     {PROFILE_ICONS.map(icon => (
                         <button
@@ -200,8 +257,8 @@ const Settings: React.FC = () => {
 
             {/* Global Currency */}
             <div className="mb-6">
-                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Globe size={16} /> Global Currency (Default)
+                 <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <Globe size={14} /> Global Currency (Default)
                  </label>
                  <div className="relative">
                     <select 
@@ -222,20 +279,53 @@ const Settings: React.FC = () => {
 
             {/* Delete Profile */}
             {profiles.length > 1 && (
-                <button 
-                    onClick={handleDeleteProfile}
-                    className="text-red-500 text-sm font-medium flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors"
-                >
-                    <Trash2 size={16} /> Delete Current Profile
-                </button>
+                <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
+                    <button 
+                        onClick={() => setShowProfileDeleteConfirm(true)}
+                        className="text-red-500 text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg transition-colors"
+                    >
+                        <Trash2 size={14} /> Delete Current Profile
+                    </button>
+                </div>
             )}
         </div>
       </section>
 
+      {/* Profile Delete Confirmation Modal */}
+      {showProfileDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-cardbg w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Profile?</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                Are you sure you want to delete <b>{currentProfile.name}</b>? All associated books and transactions will be permanently removed.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowProfileDeleteConfirm(false)}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteProfile}
+                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all active:scale-95"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Categories Management */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-white">
-          <Layers className="text-indigo-500" size={20} /> Categories
+         <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <Layers className="text-indigo-500" size={14} /> Categories
         </h3>
         
         <div className="flex flex-wrap gap-2 mb-6">
@@ -257,49 +347,58 @@ const Settings: React.FC = () => {
         </div>
 
         <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
-             <h4 className="text-sm font-semibold mb-3 dark:text-gray-300">Add New Category</h4>
-             <form onSubmit={handleAddCategory} className="space-y-3">
-                 <div className="flex gap-2">
-                     <input 
-                        type="text" 
-                        value={newCatName} 
-                        onChange={e => setNewCatName(e.target.value)}
-                        placeholder="Category Name" 
-                        className="flex-1 bg-white dark:bg-cardbg border-none rounded-lg px-3 py-2 text-sm dark:text-white"
-                     />
-                     <select 
-                        value={newCatColor}
-                        onChange={e => setNewCatColor(e.target.value)}
-                        className={`bg-white dark:bg-cardbg border-none rounded-lg px-3 py-2 text-sm ${newCatColor}`}
-                     >
-                        {/* TEXT_COLORS.map(c => <option key={c} value={c} className={c}>Color</option>) */}
-                        {/* TEXT_COLOR_NAMES.map(c => <option key={c} value={c} className={c}>Color</option>) */}
-                        {TEXT_COLOR_NAMES.map(c => (<option key={c.color} value={c.color}>{c.name}</option>))}
-                     </select>
+             <h4 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-widest ml-1">Add New Category</h4>
+             <form onSubmit={handleAddCategory} className="space-y-4">
+                 <input 
+                    type="text" 
+                    value={newCatName} 
+                    onChange={e => setNewCatName(e.target.value)}
+                    placeholder="Category Name" 
+                    className="w-full bg-white dark:bg-cardbg border-none rounded-lg px-3 py-2.5 text-sm dark:text-white focus:ring-2 focus:ring-primary-500"
+                 />
+                 
+                 <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Select Color</label>
+                    <div className="flex flex-wrap gap-2">
+                        {TEXT_COLOR_NAMES.map(c => (
+                            <button
+                                key={c.color}
+                                type="button"
+                                onClick={() => setNewCatColor(c.color)}
+                                className={`w-8 h-8 rounded-full transition-all flex items-center justify-center ${c.color.replace('text-', 'bg-')} ${newCatColor === c.color ? 'ring-2 ring-offset-2 ring-primary-500 scale-110' : 'opacity-60 hover:opacity-100'}`}
+                                title={c.name}
+                            >
+                                {newCatColor === c.color && <CheckCircle size={14} className="text-white" />}
+                            </button>
+                        ))}
+                    </div>
                  </div>
                  
-                 <div className="flex flex-wrap gap-2">
-                     {CATEGORY_ICONS.map(icon => (
-                         <button
-                            key={icon}
-                            type="button"
-                            onClick={() => setNewCatIcon(icon)}
-                            className={`p-1.5 rounded-md transition-colors ${newCatIcon === icon ? 'bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                         >
-                             {renderIcon(icon, 16)}
-                         </button>
-                     ))}
+                 <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Select Icon</label>
+                    <div className="flex flex-wrap gap-2">
+                        {CATEGORY_ICONS.map(icon => (
+                            <button
+                                key={icon}
+                                type="button"
+                                onClick={() => setNewCatIcon(icon)}
+                                className={`p-2 rounded-lg transition-colors ${newCatIcon === icon ? 'bg-primary-200 dark:bg-primary-800 text-primary-700 dark:text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                            >
+                                {renderIcon(icon, 18)}
+                            </button>
+                        ))}
+                    </div>
                  </div>
                  
-                 <button type="submit" className="w-full bg-primary-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-primary-700">Add Category</button>
+                 <button type="submit" className="w-full bg-primary-600 text-white text-sm font-medium py-3 rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-500/20 transition-all active:scale-95">Add Category</button>
              </form>
         </div>
       </section>
 
       {/* Appearance */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-white">
-          <Monitor className="text-purple-500" size={20} /> Appearance
+         <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <Monitor className="text-purple-500" size={14} /> Appearance
         </h3>
         <div className="grid grid-cols-3 gap-3">
           {(['light', 'dark', 'system'] as const).map((mode) => (
@@ -319,68 +418,81 @@ const Settings: React.FC = () => {
 
       {/* Sync */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-white">
-          <Cloud className="text-blue-500" size={20} /> Google Drive Backup
+         <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <Cloud className="text-blue-500" size={14} /> Google Drive Backup - coming soon...
         </h3>
         
-        <div className="mb-4">
-            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">Google Client ID</label>
-            <div className="flex gap-2">
-                <input 
-                    type="text" 
-                    value={clientId} 
-                    onChange={e => setClientId(e.target.value)}
-                    placeholder="e.g. 12345...apps.googleusercontent.com"
-                    className="flex-1 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-2 dark:text-white text-sm"
-                />
-                <button 
-                   onClick={handleSaveClientId}
-                   className="bg-gray-200 dark:bg-gray-700 px-4 rounded-xl text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600"
-                >
-                    Save
-                </button>
-            </div>
+        <div className="mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                Securely backup your data to your personal Google Drive. This allows you to sync your expenses across devices and keep your data safe.
+            </p>
         </div>
 
         {!currentProfile.googleAccessToken ? (
-             <button 
-                onClick={signInToGoogle}
-                disabled={!currentProfile.googleClientId}
-                className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-             >
-                <img src="https://www.google.com/favicon.ico" alt="G" className="w-4 h-4" />
-                Sign in with Google
-             </button>
+             <div className="space-y-4">
+                 <button 
+                    onClick={signInToGoogle}
+                    className="w-full bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm active:scale-95"
+                 >
+                    <img src="https://www.google.com/favicon.ico" alt="G" className="w-4 h-4" />
+                    Connect Google Drive
+                 </button>
+                 {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                     <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl flex items-start gap-2">
+                         <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                         <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-tight">
+                             Google Drive sync is not configured. Please set the <b>VITE_GOOGLE_CLIENT_ID</b> in the environment settings.
+                         </p>
+                     </div>
+                 )}
+             </div>
         ) : (
              <div className="space-y-4">
-                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-medium">
-                     <CheckCircle size={20} /> Connected to Google Drive
+                 <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 rounded-xl">
+                     <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-bold text-xs uppercase tracking-wider">
+                         <CheckCircle size={18} />
+                         Connected
+                     </div>
+                     <button 
+                        onClick={signOutFromGoogle}
+                        className="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline"
+                     >
+                        Disconnect
+                     </button>
                  </div>
                  
-                 <div className="grid grid-cols-2 gap-3">
+                 <div className="grid grid-cols-1 gap-3">
                      <button 
                         onClick={handleSyncNow}
                         disabled={isSyncing}
-                        className="bg-primary-600 text-white font-medium py-3 rounded-xl hover:bg-primary-700"
+                        className="w-full bg-primary-600 text-white font-bold py-3 rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-500/30 transition-all active:scale-95 flex items-center justify-center gap-2"
                      >
-                        {isSyncing ? 'Syncing...' : 'Sync Now'}
-                     </button>
-                     <button 
-                        onClick={signOutFromGoogle}
-                        className="bg-red-50 dark:bg-red-900/20 text-red-600 font-medium py-3 rounded-xl hover:bg-red-100"
-                     >
-                        Sign Out
+                        {isSyncing ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Syncing...
+                            </>
+                        ) : (
+                            <>
+                                <Upload size={18} />
+                                Backup Now
+                            </>
+                        )}
                      </button>
                  </div>
-                 {lastSyncTime && <p className="text-xs text-center text-gray-400">Last synced: {lastSyncTime}</p>}
+                 {currentProfile.lastSyncedAt && (
+                    <p className="text-[10px] text-center text-gray-400 font-medium uppercase tracking-widest">
+                        Last synced: {new Date(currentProfile.lastSyncedAt).toLocaleString()}
+                    </p>
+                 )}
              </div>
         )}
       </section>
 
       {/* Data Management */}
       <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 dark:text-white">
-          <FileText className="text-green-500" size={20} /> Data Management
+         <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <FileText className="text-green-500" size={14} /> Data Management
         </h3>
         
         <div className="grid grid-cols-1 gap-3">
@@ -429,8 +541,8 @@ const Settings: React.FC = () => {
 
       {/* Danger Zone */}
       <section className="bg-red-50 dark:bg-red-900/10 rounded-2xl p-6 shadow-sm border border-red-100 dark:border-red-900/30 mb-20">
-         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-600 dark:text-red-400">
-          <AlertTriangle size={20} /> Danger Zone
+         <h3 className="text-[10px] font-bold text-red-600 dark:text-red-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <AlertTriangle size={14} /> Danger Zone
         </h3>
         
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

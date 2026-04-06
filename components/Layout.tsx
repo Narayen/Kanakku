@@ -36,35 +36,35 @@ const Layout: React.FC = () => {
 
       {/* Bottom Navigation (Mobile First approach) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-cardbg border-t border-gray-200 dark:border-gray-700 pb-safe z-40 md:sticky md:bottom-auto md:top-0">
-        <div className="flex justify-around items-center h-16 max-w-5xl mx-auto">
+        <div className="flex justify-around items-center h-14 max-w-5xl mx-auto">
           <NavLink 
             to="/" 
             className={({ isActive }) => 
-              `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
+              `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Home size={24} />
-            <span className="text-xs font-medium">Home</span>
+            <Home size={20} />
+            <span className="text-[10px] font-medium">Home</span>
           </NavLink>
           
           <NavLink 
             to="/books" 
             className={({ isActive }) => 
-              `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
+              `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Book size={24} />
-            <span className="text-xs font-medium">Books</span>
+            <Book size={20} />
+            <span className="text-[10px] font-medium">Books</span>
           </NavLink>
-
+ 
           <NavLink 
             to="/settings" 
             className={({ isActive }) => 
-              `flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
+              `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Settings size={24} />
-            <span className="text-xs font-medium">Settings</span>
+            <Settings size={20} />
+            <span className="text-[10px] font-medium">Settings</span>
           </NavLink>
         </div>
       </nav>

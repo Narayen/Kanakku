@@ -50,6 +50,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load initial data
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
     if (saved) {
       const parsed = JSON.parse(saved);
       // Migration: Ensure new fields exist on old data
@@ -71,15 +73,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Load categories or fallback to default
       setCategories(parsed.categories || DEFAULT_CATEGORIES);
       
-      const current = (loadedProfiles as Profile[])?.find(p => p.isCurrent);
-      if (current?.googleClientId && window.gapi) {
-        initGoogleDrive(current.googleClientId);
+      if (googleClientId && window.gapi) {
+        initGoogleDrive(googleClientId);
       }
     } else {
       setProfiles([INITIAL_PROFILE]);
       setBooks([INITIAL_BOOK]);
       setTransactions([]);
       setCategories(DEFAULT_CATEGORIES);
+      
+      if (googleClientId && window.gapi) {
+        initGoogleDrive(googleClientId);
+      }
     }
   }, []);
 
@@ -94,7 +99,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Profile Actions ---
 
-  const addProfile = (name: string) => {
+  const addProfile = useCallback((name: string) => {
     const newProfile: Profile = {
       id: uuidv4(),
       name,
@@ -106,8 +111,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncFrequency: SyncFrequency.OFF
     };
     
-    const updatedProfiles = profiles.map(p => ({ ...p, isCurrent: false }));
-    setProfiles([...updatedProfiles, newProfile]);
+    setProfiles(prev => {
+      const updatedProfiles = prev.map(p => ({ ...p, isCurrent: false }));
+      return [...updatedProfiles, newProfile];
+    });
     
     const newBook: Book = {
       id: uuidv4(),
@@ -117,42 +124,109 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       color: 'bg-emerald-500'
     };
     setBooks(prev => [...prev, newBook]);
-  };
+  }, []);
 
-  const switchProfile = (id: string) => {
+  const switchProfile = useCallback((id: string) => {
     setProfiles(prev => prev.map(p => ({
       ...p,
       isCurrent: p.id === id
     })));
-  };
+  }, []);
 
-  const updateProfileSettings = (id: string, updates: Partial<Profile>) => {
+  const updateProfileSettings = useCallback((id: string, updates: Partial<Profile>) => {
     setProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-  };
+  }, []);
 
-  const deleteProfile = (id: string) => {
-      if (profiles.length <= 1) return; // Cannot delete last profile
+  const deleteProfile = useCallback((id: string) => {
+    setProfiles(prev => {
+      if (prev.length <= 1) return prev;
       
-      const isDeletingCurrent = currentProfile?.id === id;
-      const remainingProfiles = profiles.filter(p => p.id !== id);
+      const isDeletingCurrent = prev.find(p => p.isCurrent)?.id === id;
+      let remaining = prev.filter(p => p.id !== id);
       
-      // If we deleted the current profile, switch to the first available one
-      if (isDeletingCurrent) {
-          remainingProfiles[0].isCurrent = true;
+      if (isDeletingCurrent && remaining.length > 0) {
+        remaining = remaining.map((p, idx) => 
+          idx === 0 ? { ...p, isCurrent: true } : p
+        );
       }
-      
-      setProfiles(remainingProfiles);
-      // Remove associated books and transactions
-      const booksToDelete = books.filter(b => b.profileId === id).map(b => b.id);
-      setBooks(prev => prev.filter(b => b.profileId !== id));
-      setTransactions(prev => prev.filter(t => !booksToDelete.includes(t.bookId)));
-  };
+      return remaining;
+    });
 
-  const togglePrivacyMode = () => {
+    // Remove associated books and transactions
+    setBooks(prev => {
+      const booksToDelete = prev.filter(b => b.profileId === id).map(b => b.id);
+      setTransactions(txs => txs.filter(t => !booksToDelete.includes(t.bookId)));
+      return prev.filter(b => b.profileId !== id);
+    });
+  }, []);
+
+  const togglePrivacyMode = useCallback(() => {
     if (currentProfile) {
         updateProfileSettings(currentProfile.id, { isPrivacyMode: !currentProfile.isPrivacyMode });
     }
-  };
+  }, [currentProfile, updateProfileSettings]);
+
+  // --- Google Drive Integration ---
+
+  const initGoogleDrive = useCallback(async (clientId: string) => {
+    try {
+      if (!window.gapi || !window.google) {
+        console.warn("Google API scripts not loaded");
+        return;
+      }
+      
+      await driveService.initGapiClient();
+      
+      driveService.initGisClient(clientId, (response) => {
+        if(response.access_token && currentProfile) {
+           updateProfileSettings(currentProfile.id, { googleAccessToken: response.access_token });
+           driveService.setAccessToken(response.access_token);
+        }
+      });
+      setIsGoogleReady(true);
+    } catch (e) {
+      console.error("Failed to init Google Drive", e);
+    }
+  }, [currentProfile, updateProfileSettings]);
+
+  const signInToGoogle = useCallback(async () => {
+     if(!isGoogleReady) {
+       const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+       if (googleClientId) {
+         await initGoogleDrive(googleClientId);
+       } else {
+         return;
+       }
+     }
+     driveService.requestAccessToken();
+  }, [isGoogleReady, initGoogleDrive]);
+
+  const signOutFromGoogle = useCallback(async () => {
+    if(currentProfile) {
+      updateProfileSettings(currentProfile.id, { googleAccessToken: undefined });
+    }
+  }, [currentProfile, updateProfileSettings]);
+
+  const syncWithDrive = useCallback(async () => {
+    if (!currentProfile?.googleAccessToken) {
+       await signInToGoogle();
+       return; 
+    }
+    const data = JSON.stringify({
+       profile: currentProfile,
+       books: books.filter(b => b.profileId === currentProfile.id),
+       transactions: transactions.filter(t => books.find(b => b.id === t.bookId)?.profileId === currentProfile.id),
+       categories // include categories in sync
+    });
+
+    try {
+       await driveService.uploadFile(DRIVE_FILE_NAME, data);
+       updateProfileSettings(currentProfile.id, { lastSyncedAt: Date.now() });
+    } catch(e) {
+       console.error(e);
+       throw e; // Propagate error
+    }
+  }, [currentProfile, books, transactions, categories, signInToGoogle, updateProfileSettings]);
 
   // --- Category Actions ---
 
@@ -291,61 +365,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: true, message: `Successfully imported ${importedCount} transactions.` };
     } catch (e: any) {
       return { success: false, message: e.message || "Failed to import CSV" };
-    }
-  };
-
-  // --- Google Drive Integration ---
-
-  const initGoogleDrive = async (clientId: string) => {
-    try {
-      if (!window.gapi || !window.google) {
-        console.warn("Google API scripts not loaded");
-        return;
-      }
-      
-      await driveService.initGapiClient();
-      
-      driveService.initGisClient(clientId, (response) => {
-        if(response.access_token && currentProfile) {
-           updateProfileSettings(currentProfile.id, { googleAccessToken: response.access_token });
-           driveService.setAccessToken(response.access_token);
-        }
-      });
-      setIsGoogleReady(true);
-    } catch (e) {
-      console.error("Failed to init Google Drive", e);
-    }
-  };
-
-  const signInToGoogle = async () => {
-     if(!isGoogleReady) return;
-     driveService.requestAccessToken();
-  };
-
-  const signOutFromGoogle = async () => {
-    if(currentProfile) {
-      updateProfileSettings(currentProfile.id, { googleAccessToken: undefined });
-    }
-  };
-
-  const syncWithDrive = async () => {
-    if (!currentProfile?.googleAccessToken) {
-       await signInToGoogle();
-       return; 
-    }
-    const data = JSON.stringify({
-       profile: currentProfile,
-       books: books.filter(b => b.profileId === currentProfile.id),
-       transactions: transactions.filter(t => books.find(b => b.id === t.bookId)?.profileId === currentProfile.id),
-       categories // include categories in sync
-    });
-
-    try {
-       await driveService.uploadFile(DRIVE_FILE_NAME, data);
-       updateProfileSettings(currentProfile.id, { lastSyncedAt: Date.now() });
-    } catch(e) {
-       console.error(e);
-       throw e; // Propagate error
     }
   };
 

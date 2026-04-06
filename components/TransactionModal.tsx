@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Check, Clock } from 'lucide-react';
+import { X, Calendar, Check, Clock, Trash2, AlertCircle } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { TransactionType, Transaction } from '../types';
@@ -14,7 +14,7 @@ interface TransactionModalProps {
 }
 
 const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, preSelectedBookId, editTransaction }) => {
-  const { books, categories, addTransaction, updateTransaction, currentProfile } = useData();
+  const { books, categories, addTransaction, updateTransaction, deleteTransaction, currentProfile } = useData();
   const { showToast } = useToast();
   
   // State
@@ -25,6 +25,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Filter books for current profile
   const myBooks = books.filter(b => b.profileId === currentProfile?.id);
@@ -32,6 +33,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
   // Initialize form
   useEffect(() => {
     if (isOpen) {
+      setShowDeleteConfirm(false);
       if (editTransaction) {
         // Edit Mode
         setBookId(editTransaction.bookId);
@@ -64,6 +66,12 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
     e.preventDefault();
     if (!amount || !bookId || !categoryId) return;
 
+    const numAmount = parseFloat(amount);
+    if (numAmount < 0.01) {
+      showToast("Amount must be at least 0.01", "error");
+      return;
+    }
+
     const dateTime = new Date(`${date}T${time}:00`).toISOString();
 
     if (editTransaction) {
@@ -89,6 +97,14 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
     }
     
     onClose();
+  };
+
+  const handleDelete = () => {
+    if (editTransaction) {
+      deleteTransaction(editTransaction.id);
+      showToast("Transaction deleted successfully", "info");
+      onClose();
+    }
   };
 
   const selectedBook = myBooks.find(b => b.id === bookId);
@@ -144,6 +160,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00" 
                 step="0.01"
+                min="0.01"
                 className="w-full pl-10 pr-4 py-4 text-3xl font-bold bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-primary-500 outline-none text-gray-900 dark:text-white placeholder-gray-300"
                 autoFocus
                 required
@@ -189,28 +206,28 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
           </div>
 
           {/* Date & Time */}
-          <div className="flex gap-2">
+          <div className="flex gap-3">
              <div className="flex-1">
-                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Date</label>
                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 text-gray-400" size={18}/>
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16}/>
                     <input 
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl pl-10 pr-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     />
                  </div>
              </div>
-             <div className="w-1/3">
-                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+             <div className="flex-1">
+                 <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Time</label>
                  <div className="relative">
-                    <Clock className="absolute left-3 top-3 text-gray-400" size={18}/>
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={16}/>
                     <input 
                       type="time"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl pl-10 pr-2 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                      className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
                     />
                  </div>
              </div>
@@ -232,13 +249,50 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, pr
 
         {/* Footer */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <button 
-            onClick={handleSubmit}
-            className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
-          >
-            <Check size={20} />
-            {editTransaction ? 'Update Transaction' : 'Save Transaction'}
-          </button>
+          {showDeleteConfirm ? (
+            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm font-medium px-1">
+                <AlertCircle size={16} />
+                <span>Are you sure you want to delete?</span>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 bg-white dark:bg-cardbg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-semibold py-3 rounded-xl transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button"
+                  onClick={handleDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-red-500/30 transition-all active:scale-95"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              {editTransaction && (
+                <button 
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-3.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-all active:scale-95"
+                  title="Delete Transaction"
+                >
+                  <Trash2 size={20} />
+                </button>
+              )}
+              <button 
+                onClick={handleSubmit}
+                className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Check size={20} />
+                {editTransaction ? 'Update Transaction' : 'Save Transaction'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

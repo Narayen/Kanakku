@@ -19,7 +19,6 @@ export interface Profile {
   themePreference: 'light' | 'dark' | 'system';
   isPrivacyMode: boolean;
   syncFrequency: SyncFrequency;
-  googleClientId?: string;
   googleAccessToken?: string;
   lastSyncedAt?: number;
 }

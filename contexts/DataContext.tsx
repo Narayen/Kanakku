@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import * as XLSX from 'xlsx';
 import { 
   Profile, Book, Transaction, Category, DataContextType, 
   SyncFrequency, TransactionType 
@@ -59,7 +60,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...p,
           isPrivacyMode: p.isPrivacyMode ?? false,
           icon: p.icon ?? 'User',
-          currency: p.currency === 'USD' ? 'INR' : (p.currency ?? 'INR')
+          currency: p.currency === 'USD' ? 'INR' : (p.currency ?? 'INR'),
+          selectedBookIds: p.selectedBookIds ?? (parsed.books || [INITIAL_BOOK])
+            .filter((b: any) => b.profileId === p.id)
+            .map((b: any) => b.id)
       }));
 
       const loadedBooks = (parsed.books || [INITIAL_BOOK]).map((b: any) => ({
@@ -108,6 +112,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isCurrent: true,
       themePreference: 'system',
       isPrivacyMode: false,
+      selectedBookIds: [],
       syncFrequency: SyncFrequency.OFF
     };
     
@@ -123,6 +128,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currency: 'INR',
       color: 'bg-emerald-500'
     };
+    newProfile.selectedBookIds = [newBook.id];
     setBooks(prev => [...prev, newBook]);
   }, []);
 
@@ -164,6 +170,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentProfile) {
         updateProfileSettings(currentProfile.id, { isPrivacyMode: !currentProfile.isPrivacyMode });
     }
+  }, [currentProfile, updateProfileSettings]);
+
+  const toggleBookSelection = useCallback((bookId: string) => {
+    if (!currentProfile) return;
+    const currentSelected = currentProfile.selectedBookIds || [];
+    const isSelected = currentSelected.includes(bookId);
+    
+    const newSelected = isSelected 
+      ? currentSelected.filter(id => id !== bookId)
+      : [...currentSelected, bookId];
+      
+    updateProfileSettings(currentProfile.id, { selectedBookIds: newSelected });
   }, [currentProfile, updateProfileSettings]);
 
   // --- Google Drive Integration ---
@@ -236,19 +254,37 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const deleteCategory = (id: string) => {
+      if (id === 'cat_other') return; // Cannot delete the default category
+      
+      // Re-assign transactions to 'Others'
+      setTransactions(prev => prev.map(t => 
+          t.categoryId === id ? { ...t, categoryId: 'cat_other' } : t
+      ));
+      
       setCategories(prev => prev.filter(c => c.id !== id));
   };
+
+  const isCategoryUsed = useCallback((id: string) => {
+      return transactions.some(t => t.categoryId === id);
+  }, [transactions]);
 
   // --- Data Actions ---
 
   const addBook = (bookData: Omit<Book, 'id' | 'profileId'>) => {
     if (!currentProfile) return;
+    const newBookId = uuidv4();
     const newBook: Book = {
       ...bookData,
-      id: uuidv4(),
+      id: newBookId,
       profileId: currentProfile.id
     };
     setBooks(prev => [...prev, newBook]);
+    
+    // Auto-select new book
+    const currentSelected = currentProfile.selectedBookIds || [];
+    updateProfileSettings(currentProfile.id, { 
+      selectedBookIds: [...currentSelected, newBookId] 
+    });
   };
 
   const updateBook = (id: string, updates: Partial<Book>) => {
@@ -303,23 +339,53 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const profileBookIds = books.filter(b => b.profileId === currentProfile.id).map(b => b.id);
     const profileTransactions = transactions.filter(t => profileBookIds.includes(t.bookId));
     
-    const csv = generateCSV(profileTransactions, books, categories);
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // Prepare data for Excel
+    const data = profileTransactions.map(tx => {
+      const book = books.find(b => b.id === tx.bookId);
+      const category = categories.find(c => c.id === tx.categoryId);
+      return {
+        'Date': new Date(tx.date).toISOString().split('T')[0],
+        'Book': book?.name || 'Unknown Book',
+        'Type': tx.type,
+        'Category': category?.name || 'Uncategorized',
+        'Amount': tx.amount,
+        'Note': tx.note || '',
+        'TransactionID': tx.id
+      };
+    });
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+
+    // Generate Excel file and trigger download
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     a.click();
     window.URL.revokeObjectURL(url);
   }, [currentProfile, books, transactions, categories]);
 
-  const importData = async (csvText: string): Promise<{ success: boolean; message: string }> => {
+  const importData = async (input: string | any[]): Promise<{ success: boolean; message: string }> => {
     try {
       if (!currentProfile) throw new Error("No profile selected");
-      const rows = parseCSV(csvText);
+      
+      let rows: any[] = [];
+      if (typeof input === 'string') {
+        rows = parseCSV(input);
+      } else {
+        rows = input;
+      }
+
       const newTransactions: Transaction[] = [];
       const newBooks: Book[] = [];
       const localBooks = [...books];
+      const localCategories = [...categories];
+      const newlyCreatedCategories: Category[] = [];
       let importedCount = 0;
 
       for (const row of rows) {
@@ -340,8 +406,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         const catName = row['Category'] || 'Uncategorized';
-        const cat = categories.find(c => c.name === catName) || categories[0];
+        let cat = localCategories.find(c => c.name.toLowerCase() === catName.toLowerCase());
         
+        // If category doesn't exist, create it!
+        if (!cat) {
+            cat = {
+                id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                name: catName,
+                icon: 'Layers', // Default icon for new categories
+                color: 'text-gray-500' // Default color
+            };
+            localCategories.push(cat);
+            newlyCreatedCategories.push(cat);
+        }
+
         if (row['Amount'] && row['Date']) {
             newTransactions.push({
                 id: uuidv4(),
@@ -360,11 +438,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (newBooks.length > 0) {
         setBooks(prev => [...prev, ...newBooks]);
       }
+      
+      if (newlyCreatedCategories.length > 0) {
+        setCategories(prev => [...prev, ...newlyCreatedCategories]);
+      }
+
       setTransactions(prev => [...newTransactions, ...prev]);
       
       return { success: true, message: `Successfully imported ${importedCount} transactions.` };
     } catch (e: any) {
-      return { success: false, message: e.message || "Failed to import CSV" };
+      return { success: false, message: e.message || "Failed to import data" };
     }
   };
 
@@ -383,8 +466,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfileSettings,
     deleteProfile,
     togglePrivacyMode,
+    toggleBookSelection,
     addCategory,
     deleteCategory,
+    isCategoryUsed,
     reorderCategories,
     addBook,
     updateBook,

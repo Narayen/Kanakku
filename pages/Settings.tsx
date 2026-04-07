@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
+import * as XLSX from 'xlsx';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp
+  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -14,13 +15,16 @@ const Settings: React.FC = () => {
   const { 
     profiles, 
     currentProfile, 
+    books,
     updateProfileSettings, 
     switchProfile, 
     addProfile,
     deleteProfile,
+    toggleBookSelection,
     categories,
     addCategory,
     deleteCategory,
+    isCategoryUsed,
     reorderCategories,
     resetAllData,
     exportData,
@@ -51,6 +55,8 @@ const Settings: React.FC = () => {
   // Reset State
   const [resetConfirmCount, setResetConfirmCount] = useState(0);
   const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [showCategoryDeleteConfirm, setShowCategoryDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if(currentProfile) {
@@ -114,6 +120,30 @@ const Settings: React.FC = () => {
       }
   };
 
+  const handleDeleteCategory = (id: string) => {
+      if (id === 'cat_other') {
+          showToast("Default category 'Others' cannot be deleted", "error");
+          return;
+      }
+
+      if (isCategoryUsed(id)) {
+          setCategoryToDelete(id);
+          setShowCategoryDeleteConfirm(true);
+      } else {
+          deleteCategory(id);
+          showToast("Category deleted", "success");
+      }
+  };
+
+  const confirmDeleteCategory = () => {
+      if (categoryToDelete) {
+          deleteCategory(categoryToDelete);
+          setCategoryToDelete(null);
+          setShowCategoryDeleteConfirm(false);
+          showToast("Category deleted and transactions updated", "success");
+      }
+  };
+
   const handleFactoryReset = () => {
       if(resetConfirmCount === 0) {
           setResetConfirmCount(1);
@@ -129,13 +159,40 @@ const Settings: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
     reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const result = await importData(text);
-      setImportStatus(result.message);
+      try {
+        let data: any[] = [];
+        if (isExcel) {
+          const bstr = event.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          data = XLSX.utils.sheet_to_json(ws);
+        } else {
+          const text = event.target?.result as string;
+          // We can still use importData for CSV, but let's make it more flexible
+          const result = await importData(text);
+          setImportStatus(result.message);
+          return;
+        }
+
+        // For Excel data, we need a way to pass the parsed objects to importData
+        // Let's update importData to accept either string or objects
+        const result = await importData(data);
+        setImportStatus(result.message);
+      } catch (error) {
+        setImportStatus("Failed to parse file");
+      }
       setTimeout(() => setImportStatus(''), 5000);
     };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.readAsBinaryString(file);
+    } else {
+      reader.readAsText(file);
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -306,6 +363,47 @@ const Settings: React.FC = () => {
         </div>
       </section>
 
+      {/* Book Selection Section */}
+      <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <BookIcon className="text-emerald-500" size={14} /> Balance Calculation
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 leading-relaxed">
+          Select the books to include in your total balance, income, and expense summaries on the home screen.
+        </p>
+        
+        <div className="space-y-2">
+          {books.filter(b => b.profileId === currentProfile.id).map(book => {
+            const isSelected = currentProfile.selectedBookIds?.includes(book.id);
+            return (
+              <button
+                key={book.id}
+                onClick={() => toggleBookSelection(book.id)}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
+                    {isSelected && <Check size={12} strokeWidth={4} />}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${book.color}`}></div>
+                    <span className={`text-sm font-medium ${isSelected ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {book.name}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  {isSelected ? 'Included' : 'Excluded'}
+                </span>
+              </button>
+            );
+          })}
+          {books.filter(b => b.profileId === currentProfile.id).length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-4">No books created yet.</p>
+          )}
+        </div>
+      </section>
+
       {/* Profile Delete Confirmation Modal */}
       {showProfileDeleteConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
@@ -327,6 +425,40 @@ const Settings: React.FC = () => {
                 </button>
                 <button 
                   onClick={handleDeleteProfile}
+                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all active:scale-95"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Category Delete Confirmation Modal */}
+      {showCategoryDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white dark:bg-cardbg w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Category in Use</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                This category is currently being used in some transactions. If you delete it, those transactions will be moved to the <b>"Others"</b> category.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => {
+                      setShowCategoryDeleteConfirm(false);
+                      setCategoryToDelete(null);
+                  }}
+                  className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDeleteCategory}
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all active:scale-95"
                 >
                   Confirm Delete
@@ -370,16 +502,15 @@ const Settings: React.FC = () => {
                         >
                             <ChevronDown size={16} />
                         </button>
-                        <button 
-                            onClick={() => {
-                                if(categories.length > 1) deleteCategory(cat.id);
-                                else showToast("Keep at least one category", "error");
-                            }}
-                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors ml-1"
-                            title="Delete"
-                        >
-                            <X size={16} />
-                        </button>
+                        {cat.id !== 'cat_other' && (
+                            <button 
+                                onClick={() => handleDeleteCategory(cat.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors ml-1"
+                                title="Delete"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                 </div>
             ))}
@@ -540,14 +671,14 @@ const Settings: React.FC = () => {
              className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
              <span className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <Download size={18} /> Export to Excel (CSV)
+                <Download size={18} /> Export to Excel (.xlsx)
              </span>
           </button>
 
           <div className="relative">
              <input 
                type="file" 
-               accept=".csv"
+               accept=".csv,.xlsx,.xls"
                ref={fileInputRef}
                onChange={handleFileUpload}
                className="hidden" 
@@ -558,7 +689,7 @@ const Settings: React.FC = () => {
                className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
              >
                 <span className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                  <Upload size={18} /> Import Data
+                  <Upload size={18} /> Import Data (CSV/Excel)
                 </span>
              </label>
           </div>

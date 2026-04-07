@@ -1,10 +1,14 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Home, Book, Settings, User, Smile, Zap, Star, Heart, Crown, Coffee, Music, Sun, Moon } from 'lucide-react';
+import { 
+  Home, Book, Settings, User, Smile, Zap, Star, Heart, Crown, Coffee, Music, Sun, Moon, BarChart3,
+  Ghost, Rocket, Gamepad2, Camera, Cat, Dog, Bird
+} from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
 const IconMap: { [key: string]: any } = {
-  User, Smile, Zap, Star, Heart, Crown, Coffee, Music, Sun, Moon
+  User, Smile, Zap, Star, Heart, Crown, Coffee, Music, Sun, Moon,
+  Ghost, Rocket, Gamepad2, Camera, Cat, Dog, Bird
 };
 
 const Layout: React.FC = () => {
@@ -43,7 +47,7 @@ const Layout: React.FC = () => {
               `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Home size={20} />
+            <Home size={19} />
             <span className="text-[10px] font-medium">Home</span>
           </NavLink>
           
@@ -53,8 +57,18 @@ const Layout: React.FC = () => {
               `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Book size={20} />
+            <Book size={19} />
             <span className="text-[10px] font-medium">Books</span>
+          </NavLink>
+
+          <NavLink 
+            to="/analytics" 
+            className={({ isActive }) => 
+              `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
+            }
+          >
+            <BarChart3 size={19} />
+            <span className="text-[10px] font-medium">Analytics</span>
           </NavLink>
  
           <NavLink 
@@ -63,7 +77,7 @@ const Layout: React.FC = () => {
               `flex flex-col items-center justify-center w-full h-full space-y-0.5 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`
             }
           >
-            <Settings size={20} />
+            <Settings size={19} />
             <span className="text-[10px] font-medium">Settings</span>
           </NavLink>
         </div>

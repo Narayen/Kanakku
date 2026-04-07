@@ -18,6 +18,7 @@ export interface Profile {
   isCurrent: boolean;
   themePreference: 'light' | 'dark' | 'system';
   isPrivacyMode: boolean;
+  selectedBookIds?: string[]; // IDs of books selected for balance calculation
   syncFrequency: SyncFrequency;
   googleAccessToken?: string;
   lastSyncedAt?: number;
@@ -63,10 +64,12 @@ export interface DataContextType {
   updateProfileSettings: (id: string, updates: Partial<Profile>) => void;
   deleteProfile: (id: string) => void; // New action
   togglePrivacyMode: () => void;
+  toggleBookSelection: (bookId: string) => void;
   
   // Categories Actions
   addCategory: (category: Omit<Category, 'id'>) => void; // New action
   deleteCategory: (id: string) => void; // New action
+  isCategoryUsed: (id: string) => boolean;
 
   // Data Actions
   addBook: (book: Omit<Book, 'id' | 'profileId'>) => void;
@@ -81,7 +84,7 @@ export interface DataContextType {
   resetAllData: () => void; // New action
 
   // Import/Export
-  importData: (csvText: string) => Promise<{ success: boolean; message: string }>;
+  importData: (input: string | any[]) => Promise<{ success: boolean; message: string }>;
   exportData: () => void;
   downloadTemplate: () => void;
 

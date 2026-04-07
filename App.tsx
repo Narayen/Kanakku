@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Books from './pages/Books';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const ThemeController = () => {
@@ -51,6 +52,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
                 <Route path="books" element={<Books />} />
+                <Route path="analytics" element={<Analytics />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

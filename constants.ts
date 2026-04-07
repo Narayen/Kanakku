@@ -7,7 +7,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_shopping', name: 'Shopping', icon: 'ShoppingBag', color: 'text-pink-500' },
   { id: 'cat_health', name: 'Health', icon: 'Heart', color: 'text-red-500' },
   { id: 'cat_salary', name: 'Salary', icon: 'Briefcase', color: 'text-green-500' },
-  { id: 'cat_other', name: 'Other', icon: 'MoreHorizontal', color: 'text-gray-500' },
+  { id: 'cat_other', name: 'Others', icon: 'MoreHorizontal', color: 'text-gray-500' },
 ];
 
 export const MOCK_COLORS = [
@@ -41,13 +41,16 @@ export const TEXT_COLOR_NAMES = [
 ];
 
 export const PROFILE_ICONS = [
-  'User', 'Smile', 'Zap', 'Star', 'Heart', 'Crown', 'Coffee', 'Music', 'Sun', 'Moon'
+  'User', 'Smile', 'Zap', 'Star', 'Heart', 'Crown', 'Coffee', 'Music', 'Sun', 'Moon',
+  'Ghost', 'Rocket', 'Gamepad2', 'Camera', 'Cat', 'Dog', 'Bird'
 ];
 
 export const CATEGORY_ICONS = [
   'Utensils', 'Car', 'Zap', 'ShoppingBag', 'Heart', 'Briefcase', 
   'MoreHorizontal', 'Home', 'Smartphone', 'Wifi', 'Gift', 'Coffee',
-  'Music', 'Film', 'Book', 'Plane', 'Gamepad'
+  'Music', 'Film', 'Book', 'Plane', 'Gamepad', 'ShoppingBasket',
+  'Train', 'Bus', 'Bike', 'Dumbbell', 'Stethoscope', 'GraduationCap',
+  'Lightbulb', 'Hammer', 'Wrench', 'Trash2', 'Cloud', 'Umbrella'
 ];
 
 export const CURRENCIES = [

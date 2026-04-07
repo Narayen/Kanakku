@@ -34,21 +34,25 @@ const Home: React.FC = () => {
   const profileTransactions = useMemo(() => 
     transactions
       .filter(t => profileBookIds.includes(t.bookId))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      .sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+      }),
     [transactions, profileBookIds]
   );
 
   const totalIncome = useMemo(() => 
     profileTransactions
       .filter(t => t.type === TransactionType.INCOME)
-      .reduce((sum, t) => sum + t.amount, 0),
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
     [profileTransactions]
   );
 
   const totalExpense = useMemo(() => 
     profileTransactions
       .filter(t => t.type === TransactionType.EXPENSE)
-      .reduce((sum, t) => sum + t.amount, 0),
+      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
     [profileTransactions]
   );
 
@@ -59,7 +63,7 @@ const Home: React.FC = () => {
       .filter(t => t.type === TransactionType.EXPENSE)
       .forEach(t => {
         const catName = categories.find(c => c.id === t.categoryId)?.name || 'Other';
-        data[catName] = (data[catName] || 0) + t.amount;
+        data[catName] = (data[catName] || 0) + (Number(t.amount) || 0);
       });
     return Object.entries(data).map(([name, value]) => ({ name, value }));
   }, [profileTransactions, categories]);
@@ -135,11 +139,11 @@ const Home: React.FC = () => {
     }
 
     return dataPoints.map(dp => {
-      const dayTxs = profileTransactions.filter(t => t.date.startsWith(dp.date));
+      const dayTxs = profileTransactions.filter(t => t.date && typeof t.date === 'string' && t.date.startsWith(dp.date));
       return {
         name: dp.label,
-        income: dayTxs.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + t.amount, 0),
-        expense: dayTxs.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + t.amount, 0)
+        income: dayTxs.filter(t => t.type === TransactionType.INCOME).reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
+        expense: dayTxs.filter(t => t.type === TransactionType.EXPENSE).reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
       };
     });
   }, [profileTransactions, timeRange]);
@@ -205,6 +209,17 @@ const Home: React.FC = () => {
         {/* Subtle background decoration */}
         <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-primary-500/5 rounded-full blur-2xl"></div>
       </div>
+
+      {/* Transaction Modal */}
+      <TransactionModal 
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTransaction(null);
+        }} 
+        editTransaction={editingTransaction}
+        title={editingTransaction ? "Edit Transaction" : "Quick Add"}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -289,7 +304,7 @@ const Home: React.FC = () => {
            ) : (
              <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
                {profileTransactions.slice(0, 5).map(tx => {
-                 const dateObj = new Date(tx.date);
+                 const dateObj = new Date(tx.date || Date.now());
                  const book = getBook(tx.bookId);
                  const symbol = CURRENCIES.find(c => c.code === book?.currency)?.symbol || '₹';
                  const formattedDate = dateObj.toLocaleDateString(undefined, { 
@@ -476,12 +491,6 @@ const Home: React.FC = () => {
              </div>
           )}
       </div>
-
-      <TransactionModal 
-         isOpen={isModalOpen} 
-         onClose={() => setIsModalOpen(false)} 
-         editTransaction={editingTransaction}
-      />
     </div>
   );
 };

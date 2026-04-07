@@ -368,6 +368,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const reorderCategories = useCallback((newCategories: Category[]) => {
+      setCategories(newCategories);
+  }, []);
+
   const value = {
     profiles,
     books,
@@ -381,6 +385,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     togglePrivacyMode,
     addCategory,
     deleteCategory,
+    reorderCategories,
     addBook,
     updateBook,
     deleteBook,

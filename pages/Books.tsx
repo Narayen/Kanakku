@@ -85,7 +85,11 @@ const Books: React.FC = () => {
   const bookTransactions = useMemo(() => {
     return transactions
       .filter(t => t.bookId === selectedBookId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .sort((a, b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+      });
   }, [transactions, selectedBookId]);
 
   const bookStats = useMemo(() => {
@@ -214,13 +218,27 @@ const Books: React.FC = () => {
 
         {/* Action Bar */}
         <div className="flex gap-2 mb-6">
-           <button 
-             onClick={() => { setEditingTransaction(null); setIsAddTxOpen(true); }}
-             className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm"
-           >
-             <Plus size={20} /> Add Expense / Income
-           </button>
+           {!isAddTxOpen && (
+             <button 
+               onClick={() => { setEditingTransaction(null); setIsAddTxOpen(true); }}
+               className="flex-1 bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+             >
+               <Plus size={20} /> Add Expense / Income
+             </button>
+           )}
         </div>
+
+        {/* Transaction Modal */}
+        <TransactionModal 
+          isOpen={isAddTxOpen}
+          onClose={() => {
+            setIsAddTxOpen(false);
+            setEditingTransaction(null);
+          }} 
+          preSelectedBookId={selectedBookId}
+          editTransaction={editingTransaction}
+          title={editingTransaction ? "Edit Transaction" : "New Transaction"}
+        />
 
         {/* List */}
         <div className="bg-white dark:bg-cardbg rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -354,12 +372,6 @@ const Books: React.FC = () => {
              )}
         </div>
 
-        <TransactionModal 
-            isOpen={isAddTxOpen} 
-            onClose={() => setIsAddTxOpen(false)} 
-            preSelectedBookId={selectedBookId}
-            editTransaction={editingTransaction}
-        />
       </div>
     );
   }

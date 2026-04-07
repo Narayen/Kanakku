@@ -3,7 +3,7 @@ import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp
+  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -21,6 +21,7 @@ const Settings: React.FC = () => {
     categories,
     addCategory,
     deleteCategory,
+    reorderCategories,
     resetAllData,
     exportData,
     importData,
@@ -136,6 +137,16 @@ const Settings: React.FC = () => {
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
+      const newCategories = [...categories];
+      if (direction === 'up' && index > 0) {
+          [newCategories[index], newCategories[index - 1]] = [newCategories[index - 1], newCategories[index]];
+      } else if (direction === 'down' && index < categories.length - 1) {
+          [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
+      }
+      reorderCategories(newCategories);
   };
 
   if (!currentProfile) return null;
@@ -332,20 +343,44 @@ const Settings: React.FC = () => {
           <Layers className="text-indigo-500" size={14} /> Categories
         </h3>
         
-        <div className="flex flex-wrap gap-2 mb-6">
-            {categories.map(cat => (
-                <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <span className={`${cat.color}`}>{renderIcon(cat.icon, 14)}</span>
-                    <span className="text-sm dark:text-gray-300">{cat.name}</span>
-                    <button 
-                        onClick={() => {
-                            if(categories.length > 1) deleteCategory(cat.id);
-                            else showToast("Keep at least one category", "error");
-                        }}
-                        className="text-gray-400 hover:text-red-500 ml-1"
-                    >
-                        <X size={14} />
-                    </button>
+        <div className="flex flex-col gap-2 mb-6">
+            {categories.map((cat, index) => (
+                <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 group">
+                    <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${cat.color} bg-opacity-10 dark:bg-opacity-20`}>
+                            {renderIcon(cat.icon, 18)}
+                        </div>
+                        <span className="text-sm font-medium dark:text-gray-300">{cat.name}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1 transition-opacity">
+                        <button 
+                            disabled={index === 0}
+                            onClick={() => handleMoveCategory(index, 'up')}
+                            className="p-1.5 text-gray-400 hover:text-primary-600 disabled:opacity-20 transition-colors"
+                            title="Move Up"
+                        >
+                            <ChevronUp size={16} />
+                        </button>
+                        <button 
+                            disabled={index === categories.length - 1}
+                            onClick={() => handleMoveCategory(index, 'down')}
+                            className="p-1.5 text-gray-400 hover:text-primary-600 disabled:opacity-20 transition-colors"
+                            title="Move Down"
+                        >
+                            <ChevronDown size={16} />
+                        </button>
+                        <button 
+                            onClick={() => {
+                                if(categories.length > 1) deleteCategory(cat.id);
+                                else showToast("Keep at least one category", "error");
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-red-500 transition-colors ml-1"
+                            title="Delete"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
             ))}
         </div>

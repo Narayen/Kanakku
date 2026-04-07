@@ -72,6 +72,7 @@ export interface DataContextType {
   addBook: (book: Omit<Book, 'id' | 'profileId'>) => void;
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
+  reorderCategories: (newCategories: Category[]) => void;
   
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;

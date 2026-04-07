@@ -6,6 +6,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Books from './pages/Books';
 import Settings from './pages/Settings';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const ThemeController = () => {
   const { currentProfile } = useData();
@@ -41,21 +42,23 @@ const ThemeController = () => {
 
 const App: React.FC = () => {
   return (
-    <ToastProvider>
-      <DataProvider>
-        <ThemeController />
-        <HashRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="books" element={<Books />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-          </Routes>
-        </HashRouter>
-      </DataProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <DataProvider>
+          <ThemeController />
+          <HashRouter>
+            <Routes>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Home />} />
+                <Route path="books" element={<Books />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </HashRouter>
+        </DataProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 

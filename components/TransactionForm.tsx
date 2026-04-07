@@ -150,9 +150,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
   
   // Render Icon helper
   const renderIcon = (iconName: string) => {
+    if (!iconName) return <CircleHelp size={20} />;
     try {
-      const LucideIcon = (Icons as any)[iconName] || CircleHelp;
-      return <LucideIcon size={20} />;
+      const LucideIcon = (Icons as any)[iconName];
+      if (typeof LucideIcon === 'function' || (typeof LucideIcon === 'object' && LucideIcon !== null)) {
+        return <LucideIcon size={20} />;
+      }
+      return <CircleHelp size={20} />;
     } catch (e) {
       return <CircleHelp size={20} />;
     }
@@ -203,7 +207,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
               step="0.01"
               min="0.01"
               className="w-full pl-10 pr-4 py-4 text-3xl font-bold bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-primary-500 outline-none text-gray-900 dark:text-white placeholder-gray-300"
-              autoFocus
               required
             />
           </div>
@@ -235,7 +238,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Category</label>
           <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
-            {categories.map(cat => (
+            {(categories || []).filter(Boolean).map(cat => (
               <button
                 key={cat.id}
                 type="button"

@@ -59,13 +59,17 @@ const Home: React.FC = () => {
   // Data for Charts
   const pieData = useMemo(() => {
     const data: {[key: string]: number} = {};
+    if (!profileTransactions || !Array.isArray(profileTransactions)) return [];
+    
     profileTransactions
-      .filter(t => t.type === TransactionType.EXPENSE)
+      .filter(t => t && t.type === TransactionType.EXPENSE)
       .forEach(t => {
         const catName = categories.find(c => c.id === t.categoryId)?.name || 'Other';
         data[catName] = (data[catName] || 0) + (Number(t.amount) || 0);
       });
-    return Object.entries(data).map(([name, value]) => ({ name, value }));
+    return Object.entries(data)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }, [profileTransactions, categories]);
 
   const trendData = useMemo(() => {
@@ -464,8 +468,8 @@ const Home: React.FC = () => {
                   </div>
 
                   <div className="flex-1 w-full space-y-2.5">
-                    {pieData.sort((a, b) => b.value - a.value).slice(0, 4).map((entry, index) => {
-                      const percentage = ((entry.value / totalExpense) * 100).toFixed(0);
+                    {pieData.slice(0, 4).map((entry, index) => {
+                      const percentage = totalExpense > 0 ? ((entry.value / totalExpense) * 100).toFixed(0) : '0';
                       return (
                         <div key={entry.name} className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">

@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { 
   Profile, Book, Transaction, Category, DataContextType, 
   SyncFrequency, TransactionType 
@@ -325,13 +328,41 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- Import / Export ---
 
   const downloadTemplate = useCallback(() => {
-    const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'expenses_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const fileName = 'expenses_template.csv';
+    
+    if (Capacitor.isNativePlatform()) {
+      const handleNativeDownload = async () => {
+        try {
+          // Save to cache directory
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: SAMPLE_CSV,
+            directory: Directory.Cache,
+            encoding: 'utf8' as any, // Filesystem encoding type
+          });
+
+          // Share the file
+          await Share.share({
+            title: 'Download Template',
+            text: 'Here is the import template',
+            url: result.uri,
+            dialogTitle: 'Save Template',
+          });
+        } catch (error) {
+          console.error('Download failed:', error);
+          alert('Download failed. Please check permissions.');
+        }
+      };
+      handleNativeDownload();
+    } else {
+      const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
   }, []);
 
   const exportData = useCallback(() => {
@@ -361,13 +392,45 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Generate Excel file and trigger download
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    const fileName = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    if (Capacitor.isNativePlatform()) {
+      // Native Export (Android/iOS)
+      const handleNativeExport = async () => {
+        try {
+          const base64Data = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+          
+          // Save to temporary directory
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: base64Data,
+            directory: Directory.Cache,
+          });
+
+          // Share the file
+          await Share.share({
+            title: 'Export Transactions',
+            text: 'Here is your transaction export',
+            url: result.uri,
+            dialogTitle: 'Share Export',
+          });
+        } catch (error) {
+          console.error('Export failed:', error);
+          alert('Export failed. Please check permissions.');
+        }
+      };
+      
+      handleNativeExport();
+    } else {
+      // Browser Export
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }
   }, [currentProfile, books, transactions, categories]);
 
   const importData = async (input: string | any[]): Promise<{ success: boolean; message: string }> => {

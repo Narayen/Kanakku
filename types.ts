@@ -10,6 +10,12 @@ export enum SyncFrequency {
   OFF = 'OFF',
 }
 
+export enum AutopayFrequency {
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+}
+
 export interface Profile {
   id: string;
   name: string;
@@ -51,11 +57,26 @@ export interface Transaction {
   createdAt: number;
 }
 
+export interface Autopay {
+  id: string;
+  bookId: string;
+  amount: number;
+  type: TransactionType;
+  categoryId: string;
+  note?: string;
+  frequency: AutopayFrequency;
+  status: 'ACTIVE' | 'PAUSED';
+  startDate: string;
+  startTime?: string;
+  lastProcessedAt?: number;
+}
+
 export interface DataContextType {
   profiles: Profile[];
   books: Book[];
   transactions: Transaction[];
   categories: Category[];
+  autopays: Autopay[];
   currentProfile: Profile | null;
   
   // Profile Actions
@@ -76,6 +97,12 @@ export interface DataContextType {
   updateBook: (id: string, updates: Partial<Book>) => void;
   deleteBook: (id: string) => void;
   reorderCategories: (newCategories: Category[]) => void;
+  
+  // Autopay Actions
+  addAutopay: (autopay: Omit<Autopay, 'id' | 'status' | 'lastProcessedAt'>) => void;
+  updateAutopay: (id: string, updates: Partial<Autopay>) => void;
+  deleteAutopay: (id: string) => void;
+  toggleAutopayStatus: (id: string) => void;
   
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
   updateTransaction: (id: string, updates: Partial<Transaction>) => void;

@@ -198,9 +198,16 @@ const Settings: React.FC = () => {
 
   const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
       const newCategories = [...categories];
+      const othersIndex = newCategories.findIndex(c => c.id === 'cat_other');
+      
       if (direction === 'up' && index > 0) {
+          // Cannot move anything above index 0
           [newCategories[index], newCategories[index - 1]] = [newCategories[index - 1], newCategories[index]];
-      } else if (direction === 'down' && index < categories.length - 1) {
+      } else if (direction === 'down' && index < newCategories.length - 1) {
+          // If moving down, ensure we don't move past 'Others'
+          if (othersIndex !== -1 && index === othersIndex - 1) return;
+          if (index === othersIndex) return; // Cannot move 'Others' down
+          
           [newCategories[index], newCategories[index + 1]] = [newCategories[index + 1], newCategories[index]];
       }
       reorderCategories(newCategories);
@@ -375,27 +382,39 @@ const Settings: React.FC = () => {
         <div className="space-y-2">
           {books.filter(b => b.profileId === currentProfile.id).map(book => {
             const isSelected = currentProfile.selectedBookIds?.includes(book.id);
+            const isCurrencyMatch = book.currency === currentProfile.currency;
+            
             return (
-              <button
-                key={book.id}
-                onClick={() => toggleBookSelection(book.id)}
-                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'}`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
-                    {isSelected && <Check size={12} strokeWidth={4} />}
+              <div key={book.id} className="space-y-1">
+                <button
+                  disabled={!isCurrencyMatch}
+                  onClick={() => toggleBookSelection(book.id)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${isSelected ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/50' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700'} ${!isCurrencyMatch ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600'}`}>
+                      {isSelected && <Check size={12} strokeWidth={4} />}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${book.color}`}></div>
+                      <span className={`text-sm font-medium ${isSelected ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-600 dark:text-gray-400'}`}>
+                        {book.name}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${book.color}`}></div>
-                    <span className={`text-sm font-medium ${isSelected ? 'text-emerald-900 dark:text-emerald-100' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {book.name}
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      {isSelected ? 'Included' : 'Excluded'}
                     </span>
+                    <span className="text-[8px] text-gray-500 font-medium">{book.currency}</span>
                   </div>
-                </div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  {isSelected ? 'Included' : 'Excluded'}
-                </span>
-              </button>
+                </button>
+                {!isCurrencyMatch && (
+                  <p className="text-[9px] text-amber-600 dark:text-amber-400 font-medium px-2 flex items-center gap-1">
+                    <AlertTriangle size={10} /> Cannot select: Currency mismatch with global ({currentProfile.currency})
+                  </p>
+                )}
+              </div>
             );
           })}
           {books.filter(b => b.profileId === currentProfile.id).length === 0 && (
@@ -487,7 +506,7 @@ const Settings: React.FC = () => {
                     
                     <div className="flex items-center gap-1 transition-opacity">
                         <button 
-                            disabled={index === 0}
+                            disabled={index === 0 || cat.id === 'cat_other'}
                             onClick={() => handleMoveCategory(index, 'up')}
                             className="p-1.5 text-gray-400 hover:text-primary-600 disabled:opacity-20 transition-colors"
                             title="Move Up"
@@ -495,7 +514,7 @@ const Settings: React.FC = () => {
                             <ChevronUp size={16} />
                         </button>
                         <button 
-                            disabled={index === categories.length - 1}
+                            disabled={index === categories.length - 1 || cat.id === 'cat_other' || (index === categories.length - 2 && categories[categories.length - 1].id === 'cat_other')}
                             onClick={() => handleMoveCategory(index, 'down')}
                             className="p-1.5 text-gray-400 hover:text-primary-600 disabled:opacity-20 transition-colors"
                             title="Move Down"

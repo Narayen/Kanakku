@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
-import { Plus, FolderOpen, ArrowLeft, Trash2, AlertTriangle, Pencil, TrendingUp, TrendingDown, AlertCircle, CircleHelp } from 'lucide-react';
+import { Plus, FolderOpen, ArrowLeft, Trash2, AlertTriangle, Pencil, TrendingUp, TrendingDown, AlertCircle, CircleHelp, Repeat, Play, Pause } from 'lucide-react';
 import TransactionModal from '../components/TransactionModal';
-import { TransactionType, Transaction } from '../types';
+import AutopayModal from '../components/AutopayModal';
+import { TransactionType, Transaction, Autopay } from '../types';
 import { CURRENCIES } from '../constants';
 import { useSearchParams } from 'react-router-dom';
 import { formatIndianCurrency } from '../utils/format';
 import * as Icons from 'lucide-react';
 
 const Books: React.FC = () => {
-  const { currentProfile, books, transactions, addBook, updateBook, deleteBook, deleteTransaction, categories } = useData();
+  const { 
+    currentProfile, books, transactions, addBook, updateBook, deleteBook, 
+    deleteTransaction, categories, autopays, toggleAutopayStatus, deleteAutopay 
+  } = useData();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -33,7 +37,9 @@ const Books: React.FC = () => {
   
   // Modal States
   const [isAddTxOpen, setIsAddTxOpen] = useState(false);
+  const [isAutopayModalOpen, setIsAutopayModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingAutopay, setEditingAutopay] = useState<Autopay | null>(null);
   const [confirmDeleteTxId, setConfirmDeleteTxId] = useState<string | null>(null);
   
   // Book Form State (Create & Edit)
@@ -186,6 +192,85 @@ const Books: React.FC = () => {
             <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-primary-500/5 rounded-full blur-2xl"></div>
         </div>
 
+        {/* Autopay Section */}
+        <div className="bg-white dark:bg-cardbg rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex justify-between items-center bg-primary-50/30 dark:bg-primary-900/10">
+                <div className="flex items-center gap-2">
+                    <Repeat size={16} className="text-primary-600" />
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-widest">Autopay Transactions</h3>
+                </div>
+                <button 
+                    onClick={() => {
+                        setEditingAutopay(null);
+                        setIsAutopayModalOpen(true);
+                    }}
+                    className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
+                >
+                    + Setup New
+                </button>
+            </div>
+            <div className="divide-y divide-gray-50 dark:divide-gray-800">
+                {autopays.filter(a => a.bookId === selectedBookId).length === 0 ? (
+                    <div className="p-6 text-center">
+                        <p className="text-xs text-gray-400">No autopay transactions scheduled for this book.</p>
+                    </div>
+                ) : (
+                    autopays.filter(a => a.bookId === selectedBookId).map(ap => {
+                        const cat = categories.find(c => c.id === ap.categoryId);
+                        return (
+                            <div key={ap.id} className="p-4 flex items-center justify-between group">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-2 rounded-xl ${cat?.color || 'bg-gray-500'} bg-opacity-10 text-current`}>
+                                        <Repeat size={14} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{cat?.name}</p>
+                                            <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${ap.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                {ap.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500">
+                                            {ap.frequency} • {maskMoney(ap.amount, currencySymbol)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button 
+                                        onClick={() => {
+                                            setEditingAutopay(ap);
+                                            setIsAutopayModalOpen(true);
+                                        }}
+                                        className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                        title="Edit"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => toggleAutopayStatus(ap.id)}
+                                        className={`p-2 rounded-lg transition-colors ${ap.status === 'ACTIVE' ? 'text-amber-500 hover:bg-amber-50' : 'text-green-600 hover:bg-green-50'}`}
+                                        title={ap.status === 'ACTIVE' ? 'Pause' : 'Resume'}
+                                    >
+                                        {ap.status === 'ACTIVE' ? <Pause size={16} /> : <Play size={16} />}
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            deleteAutopay(ap.id);
+                                            showToast("Autopay deleted", "info");
+                                        }}
+                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        </div>
+
         {/* Edit Book Form (Inline if editing active while in detail view) */}
         {isBookFormOpen && editingBookId === selectedBookId && (
             <div className="mb-6 p-4 bg-white dark:bg-cardbg rounded-xl border border-primary-200 dark:border-primary-900">
@@ -238,6 +323,16 @@ const Books: React.FC = () => {
           preSelectedBookId={selectedBookId}
           editTransaction={editingTransaction}
           title={editingTransaction ? "Edit Transaction" : "New Transaction"}
+        />
+
+        <AutopayModal 
+          isOpen={isAutopayModalOpen}
+          onClose={() => {
+            setIsAutopayModalOpen(false);
+            setEditingAutopay(null);
+          }}
+          bookId={selectedBookId}
+          editAutopay={editingAutopay}
         />
 
         {/* List */}

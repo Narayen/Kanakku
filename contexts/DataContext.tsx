@@ -6,7 +6,7 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
 import { 
   Profile, Book, Transaction, Category, DataContextType, 
-  SyncFrequency, TransactionType 
+  SyncFrequency, TransactionType, Autopay, AutopayFrequency 
 } from '../types';
 import { DEFAULT_CATEGORIES } from '../constants';
 import { generateCSV, parseCSV, SAMPLE_CSV } from '../utils/csvHelper';
@@ -49,6 +49,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [books, setBooks] = useState<Book[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [autopays, setAutopays] = useState<Autopay[]>([]);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   
   // Load initial data
@@ -79,6 +80,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTransactions(parsed.transactions || []);
       // Load categories or fallback to default
       setCategories(parsed.categories || DEFAULT_CATEGORIES);
+      setAutopays(parsed.autopays || []);
       
       if (googleClientId && window.gapi) {
         initGoogleDrive(googleClientId);
@@ -98,9 +100,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Save on change
   useEffect(() => {
     if (profiles.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ profiles, books, transactions, categories }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ profiles, books, transactions, categories, autopays }));
     }
-  }, [profiles, books, transactions, categories]);
+  }, [profiles, books, transactions, categories, autopays]);
 
   const currentProfile = profiles.find(p => p.isCurrent) || profiles[0] || null;
 
@@ -143,8 +145,24 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateProfileSettings = useCallback((id: string, updates: Partial<Profile>) => {
-    setProfiles(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-  }, []);
+    setProfiles(prev => prev.map(p => {
+      if (p.id === id) {
+        const updatedProfile = { ...p, ...updates };
+        
+        // If currency changed, filter selectedBookIds to only include books with the new currency
+        if (updates.currency && updates.currency !== p.currency) {
+          const profileBooks = books.filter(b => b.profileId === id);
+          updatedProfile.selectedBookIds = (p.selectedBookIds || []).filter(bookId => {
+            const book = profileBooks.find(b => b.id === bookId);
+            return book?.currency === updates.currency;
+          });
+        }
+        
+        return updatedProfile;
+      }
+      return p;
+    }));
+  }, [books]);
 
   const deleteProfile = useCallback((id: string) => {
     setProfiles(prev => {
@@ -177,6 +195,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleBookSelection = useCallback((bookId: string) => {
     if (!currentProfile) return;
+    
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+
+    // Prevent selecting books with mismatched currency
+    if (book.currency !== currentProfile.currency) {
+      return;
+    }
+
     const currentSelected = currentProfile.selectedBookIds || [];
     const isSelected = currentSelected.includes(bookId);
     
@@ -253,7 +280,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addCategory = (categoryData: Omit<Category, 'id'>) => {
       const newCat: Category = { ...categoryData, id: `cat_${Date.now()}` };
-      setCategories(prev => [...prev, newCat]);
+      setCategories(prev => {
+        const othersIndex = prev.findIndex(c => c.id === 'cat_other');
+        if (othersIndex === -1) return [...prev, newCat];
+        
+        const updated = [...prev];
+        updated.splice(othersIndex, 0, newCat);
+        return updated;
+      });
   };
 
   const deleteCategory = (id: string) => {
@@ -283,11 +317,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     setBooks(prev => [...prev, newBook]);
     
-    // Auto-select new book
-    const currentSelected = currentProfile.selectedBookIds || [];
-    updateProfileSettings(currentProfile.id, { 
-      selectedBookIds: [...currentSelected, newBookId] 
-    });
+    // Auto-select new book only if currency matches
+    if (newBook.currency === currentProfile.currency) {
+      const currentSelected = currentProfile.selectedBookIds || [];
+      updateProfileSettings(currentProfile.id, { 
+        selectedBookIds: [...currentSelected, newBookId] 
+      });
+    }
   };
 
   const updateBook = (id: string, updates: Partial<Book>) => {
@@ -297,6 +333,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteBook = (id: string) => {
     setBooks(prev => prev.filter(b => b.id !== id));
     setTransactions(prev => prev.filter(t => t.bookId !== id));
+    setAutopays(prev => prev.filter(a => a.bookId !== id));
   };
 
   const addTransaction = (txData: Omit<Transaction, 'id' | 'createdAt'>) => {
@@ -315,6 +352,101 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const deleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
+
+  // --- Autopay Actions ---
+
+  const addAutopay = (autopayData: Omit<Autopay, 'id' | 'status' | 'lastProcessedAt'>) => {
+    const newAutopay: Autopay = {
+      ...autopayData,
+      id: uuidv4(),
+      status: 'ACTIVE',
+      lastProcessedAt: undefined
+    };
+    setAutopays(prev => [...prev, newAutopay]);
+  };
+
+  const updateAutopay = (id: string, updates: Partial<Autopay>) => {
+    setAutopays(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  const deleteAutopay = (id: string) => {
+    setAutopays(prev => prev.filter(a => a.id !== id));
+  };
+
+  const toggleAutopayStatus = (id: string) => {
+    setAutopays(prev => prev.map(a => 
+      a.id === id ? { ...a, status: a.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE' } : a
+    ));
+  };
+
+  const processAutopays = useCallback(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const newTransactions: Transaction[] = [];
+    const updatedAutopays = [...autopays];
+
+    let changed = false;
+
+    updatedAutopays.forEach((ap, index) => {
+      if (ap.status !== 'ACTIVE') return;
+
+      const [year, month, day] = ap.startDate.split('-').map(Number);
+      const [hours, minutes] = (ap.startTime || '00:00').split(':').map(Number);
+      const startDateTime = new Date(year, month - 1, day, hours, minutes);
+      
+      if (startDateTime > now) return;
+
+      let lastDate = ap.lastProcessedAt ? new Date(ap.lastProcessedAt) : startDateTime;
+      
+      let shouldProcess = false;
+      if (!ap.lastProcessedAt) {
+        shouldProcess = true;
+      } else {
+        const diffMs = now.getTime() - lastDate.getTime();
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        if (ap.frequency === AutopayFrequency.DAILY && diffDays >= 1) {
+          shouldProcess = true;
+        } else if (ap.frequency === AutopayFrequency.WEEKLY && diffDays >= 7) {
+          shouldProcess = true;
+        } else if (ap.frequency === AutopayFrequency.MONTHLY) {
+          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+          if (monthsDiff >= 1) {
+            shouldProcess = true;
+          }
+        }
+      }
+
+      if (shouldProcess) {
+        const tx: Transaction = {
+          id: uuidv4(),
+          bookId: ap.bookId,
+          amount: ap.amount,
+          type: ap.type,
+          categoryId: ap.categoryId,
+          date: todayStr,
+          note: `[Autopay] ${ap.note || ''}`,
+          createdAt: Date.now()
+        };
+        newTransactions.push(tx);
+        updatedAutopays[index] = { ...ap, lastProcessedAt: Date.now() };
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setTransactions(prev => [...newTransactions, ...prev]);
+      setAutopays(updatedAutopays);
+    }
+  }, [autopays]);
+
+  // Run autopay processing on mount and when autopays change (but carefully)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      processAutopays();
+    }, 2000); // Delay a bit to ensure data is loaded
+    return () => clearTimeout(timer);
+  }, [processAutopays]);
 
   const resetAllData = () => {
       localStorage.removeItem(STORAGE_KEY);
@@ -345,7 +477,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await Share.share({
             title: 'Download Template',
             text: 'Here is the import template',
-            url: result.uri,
+            files: [result.uri],
             dialogTitle: 'Save Template',
           });
         } catch (error) {
@@ -411,7 +543,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await Share.share({
             title: 'Export Transactions',
             text: 'Here is your transaction export',
-            url: result.uri,
+            files: [result.uri],
             dialogTitle: 'Share Export',
           });
         } catch (error) {
@@ -523,6 +655,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     books,
     transactions,
     categories,
+    autopays,
     currentProfile,
     addProfile,
     switchProfile,
@@ -537,6 +670,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addBook,
     updateBook,
     deleteBook,
+    addAutopay,
+    updateAutopay,
+    deleteAutopay,
+    toggleAutopayStatus,
     addTransaction,
     updateTransaction,
     deleteTransaction,

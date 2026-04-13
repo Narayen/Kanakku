@@ -25,10 +25,12 @@ const Layout: React.FC = () => {
            </div>
            <h1 className="text-xl font-bold tracking-tight text-primary-700 dark:text-primary-400">ET</h1>
         </div>
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full">
+        <div className="flex items-center gap-2 px-1 py-1">
            <ProfileIcon size={16} className="text-primary-600 dark:text-primary-400" />
            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {currentProfile?.name}
+              {currentProfile?.name && currentProfile.name.length > 15 
+                ? `${currentProfile.name.substring(0, 15)}...` 
+                : currentProfile?.name}
            </span>
         </div>
       </header>

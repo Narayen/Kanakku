@@ -7,7 +7,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat_shopping', name: 'Shopping', icon: 'ShoppingBag', color: 'text-pink-500' },
   { id: 'cat_health', name: 'Health', icon: 'Heart', color: 'text-red-500' },
   { id: 'cat_salary', name: 'Salary', icon: 'Briefcase', color: 'text-green-500' },
-  { id: 'cat_other', name: 'Others', icon: 'MoreHorizontal', color: 'text-gray-500' },
+  { id: 'cat_other', name: 'Others', icon: 'Pencil', color: 'text-gray-500' },
 ];
 
 export const MOCK_COLORS = [
@@ -47,7 +47,7 @@ export const PROFILE_ICONS = [
 
 export const CATEGORY_ICONS = [
   'Utensils', 'Car', 'Zap', 'ShoppingBag', 'Heart', 'Briefcase', 
-  'MoreHorizontal', 'Home', 'Smartphone', 'Wifi', 'Gift', 'Coffee',
+  'MoreHorizontal', 'MoreVertical', 'LayoutGrid', 'Shapes', 'CircleEllipsis', 'Pencil', 'Home', 'Smartphone', 'Wifi', 'Gift', 'Coffee',
   'Music', 'Film', 'Book', 'Plane', 'Gamepad', 'ShoppingBasket',
   'Train', 'Bus', 'Bike', 'Dumbbell', 'Stethoscope', 'GraduationCap',
   'Lightbulb', 'Hammer', 'Wrench', 'Trash2', 'Cloud', 'Umbrella'
@@ -65,4 +65,10 @@ export const CURRENCIES = [
   { code: 'CHF', symbol: 'Fr', flag: '🇨🇭', name: 'Swiss Franc' },
   { code: 'SGD', symbol: 'S$', flag: '🇸🇬', name: 'Singapore Dollar' },
   { code: 'AED', symbol: 'dh', flag: '🇦🇪', name: 'UAE Dirham' },
+  { code: 'PHP', symbol: '₱', flag: '🇵🇭', name: 'Philippine Peso' },
+  { code: 'THB', symbol: '฿', flag: '🇹🇭', name: 'Thai Baht' },
+  { code: 'VND', symbol: '₫', flag: '🇻🇳', name: 'Vietnamese Dong' },
+  { code: 'KHR', symbol: '៛', flag: '🇰🇭', name: 'Cambodian Riel' },
+  { code: 'MYR', symbol: 'RM', flag: '🇲🇾', name: 'Malaysian Ringgit' },
+  { code: 'LKR', symbol: 'Rs', flag: '🇱🇰', name: 'Sri Lankan Rupee' },
 ];

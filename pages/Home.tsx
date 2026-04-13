@@ -38,8 +38,11 @@ const Home: React.FC = () => {
   );
 
   const filteredTransactions = useMemo(() => 
-    profileTransactions.filter(t => selectedBookIds.includes(t.bookId)),
-    [profileTransactions, selectedBookIds]
+    profileTransactions.filter(t => {
+      const book = books.find(b => b.id === t.bookId);
+      return selectedBookIds.includes(t.bookId) && book?.currency === currentProfile?.currency;
+    }),
+    [profileTransactions, selectedBookIds, currentProfile, books]
   );
 
   const totalIncome = useMemo(() => 
@@ -235,7 +238,12 @@ const Home: React.FC = () => {
                           <Wallet size={14} />
                        </div>
                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-gray-900 dark:text-gray-100 leading-none mb-0.5">{getCatName(tx.categoryId)}</p>
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                             <p className="text-xs font-medium text-gray-900 dark:text-gray-100 leading-none">{getCatName(tx.categoryId)}</p>
+                             {tx.note?.startsWith('[Autopay]') && (
+                               <span className="text-[8px] bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-1 py-0.5 rounded font-bold uppercase tracking-tighter">Autopay</span>
+                             )}
+                          </div>
                           <p className="text-[10px] text-gray-500 truncate">
                              {truncatedBookName} • {formattedDate}
                           </p>

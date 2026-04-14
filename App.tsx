@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+// App icon configuration updated
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider, useData } from './contexts/DataContext';
 import { ToastProvider } from './contexts/ToastContext';

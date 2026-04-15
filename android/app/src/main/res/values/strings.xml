@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">ET</string>
-    <string name="title_activity_main">ET</string>
+    <string name="app_name">Kanakku</string>
+    <string name="title_activity_main">Kanakku</string>
     <string name="package_name">com.narayen.expensync</string>
     <string name="custom_url_scheme">com.narayen.expensync</string>
 </resources>

@@ -1,0 +1,42 @@
+# Handle line endings correctly
+* text=auto
+
+# Ensure binary files are handled correctly
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.7z binary
+*.rar binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.class binary
+*.pyc binary
+*.db binary
+*.sqlite binary
+*.dat binary
+*.bin binary
+*.war binary
+*.ear binary
+*.aar binary
+*.apk binary
+*.aab binary
+*.dex binary
+*.keystore binary
+*.jks binary
+*.p12 binary
+*.pfx binary
+*.crt binary
+*.cer binary
+*.der binary
+*.pem binary
+*.key binary
+*.pub binary

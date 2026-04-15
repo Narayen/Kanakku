@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Android Mipmaps
+android/app/src/main/res/mipmap-hdpi
+android/app/src/main/res/mipmap-ldpi
+android/app/src/main/res/mipmap-mdpi
+android/app/src/main/res/mipmap-xhdpi
+android/app/src/main/res/mipmap-xxhdpi
+android/app/src/main/res/mipmap-xxxhdpi
+
+# Root Assets
+icon.png

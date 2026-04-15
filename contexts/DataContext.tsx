@@ -524,7 +524,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Generate Excel file and trigger download
     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const fileName = `Kanakku_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    const fileName = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     if (Capacitor.isNativePlatform()) {
       // Native Export (Android/iOS)

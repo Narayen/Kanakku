@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+#ignore images
+android/app/src/main/res/mipmap*
+icon.png
+
+# Ignore readme files
+README.md
+CODE_ARCHITECTURE_REPORT.md
+GITHUB_ACTIONS_REPORT.md

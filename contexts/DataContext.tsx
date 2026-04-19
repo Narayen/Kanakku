@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { NativeBiometric } from 'capacitor-native-biometric';
 import { 
   Profile, Book, Transaction, Category, DataContextType, 
   SyncFrequency, TransactionType, Autopay, AutopayFrequency 
@@ -61,13 +62,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load initial data
   useEffect(() => {
     // Check biometric support
-    if (window.PublicKeyCredential) {
-        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-            .then((available) => {
-                setIsBiometricSupported(available);
-            })
-            .catch(() => setIsBiometricSupported(false));
-    }
+    const checkBiometricSupport = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const result = await NativeBiometric.isAvailable();
+          setIsBiometricSupported(result.isAvailable);
+        } catch (err) {
+          console.error('Native biometric support check failed:', err);
+          setIsBiometricSupported(false);
+        }
+      } else if (window.PublicKeyCredential) {
+        try {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          setIsBiometricSupported(available);
+        } catch (err) {
+          setIsBiometricSupported(false);
+        }
+      }
+    };
+    
+    checkBiometricSupport();
 
     const saved = localStorage.getItem(STORAGE_KEY);
     const savedTags = localStorage.getItem(TAGS_STORAGE_KEY);

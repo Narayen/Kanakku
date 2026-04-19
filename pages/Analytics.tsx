@@ -139,6 +139,20 @@ const Analytics: React.FC = () => {
   const isPrivacy = currentProfile?.isPrivacyMode;
   const globalSymbol = CURRENCIES.find(c => c.code === currentProfile?.currency)?.symbol || '₹';
 
+  const tagData = useMemo(() => {
+    const data: {[key: string]: number} = {};
+    profileTransactions
+      .filter(t => t.type === TransactionType.EXPENSE && t.tags && t.tags.length > 0)
+      .forEach(t => {
+        t.tags?.forEach(tag => {
+          data[tag] = (data[tag] || 0) + (Number(t.amount) || 0);
+        });
+      });
+    return Object.entries(data)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [profileTransactions]);
+
   const maskMoney = (amount: number, symbol: string = globalSymbol) => 
     isPrivacy ? '****' : formatIndianCurrency(amount, symbol);
 
@@ -152,6 +166,116 @@ const Analytics: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Pie Chart - Categories */}
+      {pieData.length > 0 ? (
+        <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Spendings Breakdown</h3>
+            <span className="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              By Category
+            </span>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="h-48 w-48 relative flex-shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '10px' }}
+                    formatter={(value: number) => isPrivacy ? '****' : formatIndianCurrency(value)}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              {/* Center Label */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Total</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  {isPrivacy ? '****' : formatIndianCurrency(totalExpense)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full space-y-2">
+              {pieData.slice(0, 5).map((entry, index) => {
+                const percentage = totalExpense > 0 ? ((entry.value / totalExpense) * 100).toFixed(0) : '0';
+                return (
+                  <div key={entry.name} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{entry.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-bold text-gray-400">{percentage}%</span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white min-w-[60px] text-right">
+                        {maskMoney(entry.value)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+              {pieData.length > 5 && (
+                <p className="text-[10px] text-gray-400 text-center pt-1 italic">
+                  + {pieData.length - 5} more categories
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-cardbg p-10 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 text-center">
+          <p className="text-xs text-gray-500 dark:text-gray-400">No expense data available for the breakdown.</p>
+        </div>
+      )}
+
+      {/* Tag Analysis */}
+      {tagData.length > 0 && (
+        <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Tag spending Analysis</h3>
+            <span className="text-[10px] bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              By Tags
+            </span>
+          </div>
+          <div className="space-y-3">
+            {tagData.slice(0, 6).map((tag) => {
+              const maxVal = tagData[0].value;
+              const width = (tag.value / maxVal) * 100;
+              return (
+                <div key={tag.name} className="space-y-1">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">#{tag.name}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{maskMoney(tag.value)}</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary-500 rounded-full transition-all duration-500" 
+                      style={{ width: `${width}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {tagData.length > 6 && (
+              <p className="text-[10px] text-gray-400 text-center pt-1 italic">
+                Showing top 6 tags
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Trend Chart */}
       <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
@@ -223,79 +347,6 @@ const Analytics: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Pie Chart - Categories */}
-      {pieData.length > 0 ? (
-        <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Spending Breakdown</h3>
-            <span className="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-              Expenses
-            </span>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-6">
-            <div className="h-48 w-48 relative flex-shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={4}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '10px' }}
-                    formatter={(value: number) => isPrivacy ? '****' : formatIndianCurrency(value)}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Label */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">Total</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                  {isPrivacy ? '****' : formatIndianCurrency(totalExpense)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex-1 w-full space-y-2">
-              {pieData.slice(0, 5).map((entry, index) => {
-                const percentage = totalExpense > 0 ? ((entry.value / totalExpense) * 100).toFixed(0) : '0';
-                return (
-                  <div key={entry.name} className="flex items-center justify-between group">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                      <span className="text-xs text-gray-600 dark:text-gray-400 truncate">{entry.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-gray-400">{percentage}%</span>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white min-w-[60px] text-right">
-                        {maskMoney(entry.value)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              {pieData.length > 5 && (
-                <p className="text-[10px] text-gray-400 text-center pt-1 italic">
-                  + {pieData.length - 5} more categories
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-cardbg p-10 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 text-center">
-          <p className="text-xs text-gray-500 dark:text-gray-400">No expense data available for the breakdown.</p>
-        </div>
-      )}
     </div>
   );
 };

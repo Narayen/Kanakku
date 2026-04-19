@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2, Tag, Plus } from 'lucide-react';
+import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2, Tag, Plus, CircleHelp } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { TransactionType, AutopayFrequency, Category, Autopay } from '../types';
 import { TEXT_COLORS } from '../constants';
@@ -85,6 +86,15 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
       addAutopay(autopayData);
     }
     onClose();
+  };
+
+  const renderIcon = (iconName: string) => {
+    try {
+      const LucideIcon = (Icons as any)[iconName] || CircleHelp;
+      return <LucideIcon size={16} />;
+    } catch (e) {
+      return <CircleHelp size={16} />;
+    }
   };
 
   if (!isOpen) return null;
@@ -193,7 +203,7 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
                     <button 
                       type="button" 
                       onClick={() => handleAddTag(tag)}
-                      className={`text-[10px] font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
+                      className={`text-xs font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
                     >
                       {tag}
                     </button>
@@ -203,9 +213,9 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
                         e.stopPropagation();
                         removeFromTagHistory(tag);
                       }}
-                      className="ml-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="ml-1 p-0.5 text-gray-400 hover:text-red-500 transition-opacity"
                     >
-                      <X size={10} />
+                      <X size={12} />
                     </button>
                   </div>
                 ))}
@@ -215,25 +225,23 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
 
           {/* Category Selection */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Category</label>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Category</label>
             <div className="grid grid-cols-5 gap-2">
               {categories.map((cat) => (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => setCategoryId(cat.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all ${
+                  className={`flex flex-col items-center justify-center p-2 rounded-xl border-2 transition-all ${
                     categoryId === cat.id
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                       : 'border-transparent bg-gray-50 dark:bg-gray-800'
                   }`}
                 >
-                  <div className={`${cat.color} mb-1`}>
-                    <div className="w-5 h-5 flex items-center justify-center">
-                       <Repeat size={16} />
-                    </div>
+                  <div className={`${cat.color} bg-opacity-10 dark:bg-opacity-20 p-1.5 rounded-lg mb-1`}>
+                    {renderIcon(cat.icon)}
                   </div>
-                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-400 truncate w-full text-center">
+                  <span className="text-[9px] font-medium text-gray-600 dark:text-gray-400 truncate w-full text-center px-1">
                     {cat.name}
                   </span>
                 </button>

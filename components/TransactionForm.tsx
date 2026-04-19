@@ -306,7 +306,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
                   <button 
                     type="button" 
                     onClick={() => handleAddTag(tag)}
-                    className={`text-[10px] font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
+                    className={`text-xs font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
                   >
                     {tag}
                   </button>
@@ -316,9 +316,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
                       e.stopPropagation();
                       removeFromTagHistory(tag);
                     }}
-                    className="ml-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="ml-1 p-0.5 text-gray-400 hover:text-red-500 transition-opacity"
                   >
-                    <X size={10} />
+                    <X size={12} />
                   </button>
                 </div>
               ))}

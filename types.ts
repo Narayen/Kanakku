@@ -24,6 +24,8 @@ export interface Profile {
   isCurrent: boolean;
   themePreference: 'light' | 'dark' | 'system';
   isPrivacyMode: boolean;
+  isSecurityEnabled: boolean;
+  securityPin?: string;
   selectedBookIds?: string[]; // IDs of books selected for balance calculation
   syncFrequency: SyncFrequency;
   googleAccessToken?: string;
@@ -128,4 +130,9 @@ export interface DataContextType {
   signOutFromGoogle: () => Promise<void>;
   syncWithDrive: () => Promise<void>;
   isGoogleReady: boolean;
+  isAppLocked: boolean;
+  unlockApp: (pin: string) => boolean;
+  lockApp: () => void;
+  setAppPin: (pin: string) => void;
+  disableAppPin: () => void;
 }

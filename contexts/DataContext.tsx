@@ -34,6 +34,7 @@ const INITIAL_PROFILE: Profile = {
   isCurrent: true,
   themePreference: 'system',
   isPrivacyMode: false,
+  isSecurityEnabled: false,
   syncFrequency: SyncFrequency.OFF
 };
 
@@ -53,6 +54,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [autopays, setAutopays] = useState<Autopay[]>([]);
   const [tagHistory, setTagHistory] = useState<string[]>([]);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
+  const [isAppLocked, setIsAppLocked] = useState(false);
   
   // Load initial data
   useEffect(() => {
@@ -70,6 +72,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const loadedProfiles = (parsed.profiles || [INITIAL_PROFILE]).map((p: any) => ({
           ...p,
           isPrivacyMode: p.isPrivacyMode ?? false,
+          isSecurityEnabled: p.isSecurityEnabled ?? false,
           icon: p.icon ?? 'User',
           currency: p.currency === 'USD' ? 'INR' : (p.currency ?? 'INR'),
           selectedBookIds: p.selectedBookIds ?? (parsed.books || [INITIAL_BOOK])
@@ -89,6 +92,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCategories(parsed.categories || DEFAULT_CATEGORIES);
       setAutopays(parsed.autopays || []);
       
+      const current = loadedProfiles.find((p: any) => p.isCurrent) || loadedProfiles[0];
+      if (current?.isSecurityEnabled) {
+        setIsAppLocked(true);
+      }
+
       if (googleClientId && window.gapi) {
         initGoogleDrive(googleClientId);
       }
@@ -128,6 +136,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isCurrent: true,
       themePreference: 'system',
       isPrivacyMode: false,
+      isSecurityEnabled: false,
       selectedBookIds: [],
       syncFrequency: SyncFrequency.OFF
     };
@@ -149,10 +158,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const switchProfile = useCallback((id: string) => {
-    setProfiles(prev => prev.map(p => ({
-      ...p,
-      isCurrent: p.id === id
-    })));
+    setProfiles(prev => {
+      const updated = prev.map(p => ({
+        ...p,
+        isCurrent: p.id === id
+      }));
+      
+      const newCurrent = updated.find(p => p.id === id);
+      if (newCurrent?.isSecurityEnabled) {
+        setIsAppLocked(true);
+      } else {
+        setIsAppLocked(false);
+      }
+      
+      return updated;
+    });
   }, []);
 
   const updateProfileSettings = useCallback((id: string, updates: Partial<Profile>) => {
@@ -201,6 +221,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const togglePrivacyMode = useCallback(() => {
     if (currentProfile) {
         updateProfileSettings(currentProfile.id, { isPrivacyMode: !currentProfile.isPrivacyMode });
+    }
+  }, [currentProfile, updateProfileSettings]);
+
+  const unlockApp = useCallback((pin: string) => {
+    if (!currentProfile || !currentProfile.securityPin) return true;
+    if (currentProfile.securityPin === pin) {
+      setIsAppLocked(false);
+      return true;
+    }
+    return false;
+  }, [currentProfile]);
+
+  const lockApp = useCallback(() => {
+    if (currentProfile?.isSecurityEnabled) {
+      setIsAppLocked(true);
+    }
+  }, [currentProfile]);
+
+  const setAppPin = useCallback((pin: string) => {
+    if (currentProfile) {
+      updateProfileSettings(currentProfile.id, { 
+        isSecurityEnabled: true, 
+        securityPin: pin 
+      });
+    }
+  }, [currentProfile, updateProfileSettings]);
+
+  const disableAppPin = useCallback(() => {
+    if (currentProfile) {
+      updateProfileSettings(currentProfile.id, { 
+        isSecurityEnabled: false, 
+        securityPin: undefined 
+      });
+      setIsAppLocked(false);
     }
   }, [currentProfile, updateProfileSettings]);
 
@@ -714,7 +768,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signInToGoogle,
     signOutFromGoogle,
     syncWithDrive,
-    isGoogleReady
+    isGoogleReady,
+    isAppLocked,
+    unlockApp,
+    lockApp,
+    setAppPin,
+    disableAppPin
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

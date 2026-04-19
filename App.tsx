@@ -4,6 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DataProvider, useData } from './contexts/DataContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
+import LockScreen from './components/LockScreen';
 import Home from './pages/Home';
 import Books from './pages/Books';
 import Settings from './pages/Settings';
@@ -42,23 +43,35 @@ const ThemeController = () => {
   return null;
 };
 
+const AppContent: React.FC = () => {
+  const { isAppLocked } = useData();
+  
+  if (isAppLocked) {
+    return <LockScreen />;
+  }
+
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="books" element={<Books />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </HashRouter>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <ToastProvider>
         <DataProvider>
           <ThemeController />
-          <HashRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Home />} />
-                <Route path="books" element={<Books />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
-          </HashRouter>
+          <AppContent />
         </DataProvider>
       </ToastProvider>
     </ErrorBoundary>

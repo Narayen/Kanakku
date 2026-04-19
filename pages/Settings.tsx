@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import * as XLSX from 'xlsx';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon
+  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon, Shield, Lock
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -33,7 +33,10 @@ const Settings: React.FC = () => {
     initGoogleDrive,
     signInToGoogle,
     signOutFromGoogle,
-    syncWithDrive
+    syncWithDrive,
+    setAppPin,
+    disableAppPin,
+    lockApp
   } = useData();
   const { showToast } = useToast();
 
@@ -42,6 +45,11 @@ const Settings: React.FC = () => {
   const [newProfileName, setNewProfileName] = useState('');
   const [importStatus, setImportStatus] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Security State
+  const [isSettingPin, setIsSettingPin] = useState(false);
+  const [pinDraft, setPinDraft] = useState('');
+  const [showDisablePinConfirm, setShowDisablePinConfirm] = useState(false);
 
   // Category Form State
   const [newCatName, setNewCatName] = useState('');
@@ -213,6 +221,18 @@ const Settings: React.FC = () => {
       reorderCategories(newCategories);
   };
 
+  const handleSetPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinDraft.length === 4) {
+      setAppPin(pinDraft);
+      setIsSettingPin(false);
+      setPinDraft('');
+      showToast("Security PIN enabled", "success");
+    } else {
+      showToast("PIN must be 4 digits", "error");
+    }
+  };
+
   if (!currentProfile) return null;
 
   // Render Icon helper
@@ -367,6 +387,116 @@ const Settings: React.FC = () => {
                     </button>
                 </div>
             )}
+        </div>
+      </section>
+
+      {/* Security Section */}
+      <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+        <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <Shield className="text-primary-500" size={14} /> Security
+        </h3>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700/50">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${currentProfile.isSecurityEnabled ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                <Lock size={18} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white">App PIN Lock</h4>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Require PIN when opening the app</p>
+              </div>
+            </div>
+            
+            {currentProfile.isSecurityEnabled ? (
+              <div className="flex gap-2">
+                <button 
+                  onClick={lockApp}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-all active:scale-95"
+                >
+                  Lock Now
+                </button>
+                <button 
+                  onClick={() => setShowDisablePinConfirm(true)}
+                  className="px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-all active:scale-95"
+                >
+                  Disable
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={() => setIsSettingPin(true)}
+                className="px-4 py-2 bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary-500/20 hover:bg-primary-700 transition-all active:scale-95"
+              >
+                Enable
+              </button>
+            )}
+          </div>
+
+          {isSettingPin && (
+            <div className="p-5 bg-primary-50 dark:bg-primary-900/10 rounded-2xl border border-primary-100 dark:border-primary-900/20 animate-in slide-in-from-top-2">
+              <h4 className="text-[10px] font-bold text-primary-600 dark:text-primary-400 uppercase tracking-widest mb-3 ml-1">Setup 4-Digit PIN</h4>
+              <form onSubmit={handleSetPin} className="flex flex-col gap-4">
+                <input 
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  value={pinDraft}
+                  onChange={e => setPinDraft(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Enter 4 digits"
+                  className="w-full bg-white dark:bg-gray-800 border-2 border-primary-200 dark:border-primary-800 rounded-xl px-4 py-3 text-2xl font-bold tracking-[1em] text-center dark:text-white focus:outline-none focus:border-primary-500"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => { setIsSettingPin(false); setPinDraft(''); }}
+                    className="flex-1 py-3 text-xs font-bold text-gray-500 uppercase tracking-widest hover:bg-white dark:hover:bg-gray-800 rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={pinDraft.length !== 4}
+                    className="flex-3 py-3 bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary-500/20 disabled:opacity-50"
+                  >
+                    Confirm & Enable
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {showDisablePinConfirm && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+              <div className="bg-white dark:bg-cardbg w-full max-w-sm rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="p-6 text-center">
+                  <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Shield className="animate-pulse" size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Disable Pin?</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+                    This will remove the security requirement when opening the app. Your data will be accessible without a PIN.
+                  </p>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={() => setShowDisablePinConfirm(false)}
+                      className="flex-1 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => { disableAppPin(); setShowDisablePinConfirm(false); showToast("Security PIN disabled", "info"); }}
+                      className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-red-500/30 hover:bg-red-700 transition-all active:scale-95"
+                    >
+                      Disable
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

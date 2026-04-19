@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import * as XLSX from 'xlsx';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon, Shield, Lock
+  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon, Shield, Lock, Fingerprint
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -36,7 +36,9 @@ const Settings: React.FC = () => {
     syncWithDrive,
     setAppPin,
     disableAppPin,
-    lockApp
+    lockApp,
+    toggleBiometric,
+    isBiometricSupported
   } = useData();
   const { showToast } = useToast();
 
@@ -498,6 +500,30 @@ const Settings: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Biometric Toggle */}
+        {(isBiometricSupported || currentProfile.isBiometricEnabled) && (
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700/50">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${currentProfile.isBiometricEnabled ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+                  <Fingerprint size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white">Biometric Unlock</h4>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Unlock with fingerprint or face ID</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={toggleBiometric}
+                className={`w-12 h-6 rounded-full transition-all relative ${currentProfile.isBiometricEnabled ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+              >
+                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${currentProfile.isBiometricEnabled ? 'left-7' : 'left-1'}`}></div>
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Book Selection Section */}

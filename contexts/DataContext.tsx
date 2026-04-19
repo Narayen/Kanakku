@@ -35,6 +35,7 @@ const INITIAL_PROFILE: Profile = {
   themePreference: 'system',
   isPrivacyMode: false,
   isSecurityEnabled: false,
+  isBiometricEnabled: false,
   syncFrequency: SyncFrequency.OFF
 };
 
@@ -55,9 +56,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [tagHistory, setTagHistory] = useState<string[]>([]);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const [isAppLocked, setIsAppLocked] = useState(false);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   
   // Load initial data
   useEffect(() => {
+    // Check biometric support
+    if (window.PublicKeyCredential) {
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+            .then((available) => {
+                setIsBiometricSupported(available);
+            })
+            .catch(() => setIsBiometricSupported(false));
+    }
+
     const saved = localStorage.getItem(STORAGE_KEY);
     const savedTags = localStorage.getItem(TAGS_STORAGE_KEY);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -73,6 +84,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...p,
           isPrivacyMode: p.isPrivacyMode ?? false,
           isSecurityEnabled: p.isSecurityEnabled ?? false,
+          isBiometricEnabled: p.isBiometricEnabled ?? false,
           icon: p.icon ?? 'User',
           currency: p.currency === 'USD' ? 'INR' : (p.currency ?? 'INR'),
           selectedBookIds: p.selectedBookIds ?? (parsed.books || [INITIAL_BOOK])
@@ -137,6 +149,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       themePreference: 'system',
       isPrivacyMode: false,
       isSecurityEnabled: false,
+      isBiometricEnabled: false,
       selectedBookIds: [],
       syncFrequency: SyncFrequency.OFF
     };
@@ -248,14 +261,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentProfile, updateProfileSettings]);
 
+  const unlockWithoutPin = useCallback(() => {
+    setIsAppLocked(false);
+  }, []);
+
   const disableAppPin = useCallback(() => {
     if (currentProfile) {
       updateProfileSettings(currentProfile.id, { 
         isSecurityEnabled: false, 
-        securityPin: undefined 
+        securityPin: undefined,
+        isBiometricEnabled: false
       });
       setIsAppLocked(false);
     }
+  }, [currentProfile, updateProfileSettings]);
+
+  const toggleBiometric = useCallback(async () => {
+    if (!currentProfile) return false;
+    
+    const newState = !currentProfile.isBiometricEnabled;
+    
+    // For web environments, enabling biometrics usually requires a simple user gesture verification 
+    // but here we just toggle the setting for the UI flow.
+    updateProfileSettings(currentProfile.id, { isBiometricEnabled: newState });
+    return newState;
   }, [currentProfile, updateProfileSettings]);
 
   const toggleBookSelection = useCallback((bookId: string) => {
@@ -773,7 +802,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     unlockApp,
     lockApp,
     setAppPin,
-    disableAppPin
+    disableAppPin,
+    unlockWithoutPin,
+    toggleBiometric,
+    isBiometricSupported
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

@@ -26,6 +26,7 @@ export interface Profile {
   isPrivacyMode: boolean;
   isSecurityEnabled: boolean;
   securityPin?: string;
+  isBiometricEnabled: boolean;
   selectedBookIds?: string[]; // IDs of books selected for balance calculation
   syncFrequency: SyncFrequency;
   googleAccessToken?: string;
@@ -135,4 +136,7 @@ export interface DataContextType {
   lockApp: () => void;
   setAppPin: (pin: string) => void;
   disableAppPin: () => void;
+  unlockWithoutPin: () => void;
+  toggleBiometric: () => Promise<boolean>;
+  isBiometricSupported: boolean;
 }

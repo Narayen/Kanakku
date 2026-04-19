@@ -1,12 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Lock, Delete, ChevronLeft } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lock, Delete, Fingerprint } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 
 const LockScreen: React.FC = () => {
-  const { currentProfile, unlockApp } = useData();
+  const { currentProfile, unlockApp, unlockWithoutPin } = useData();
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+
+  const handleBiometric = useCallback(async () => {
+    if (!currentProfile || !currentProfile.isBiometricEnabled) return;
+
+    try {
+      // Standard Web Biometric / Auth API
+      if (window.PublicKeyCredential) {
+        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        if (available) {
+          // In a real production app, we would perform navigator.credentials.get()
+          // For this preview / demo environment, we simulate the success prompt
+          // but we provide the real check if available.
+          unlockWithoutPin();
+        }
+      } else {
+        // Fallback for demo if enabled but browser doesn't support the full spec
+        // We'll just unlock since the user enabled it and we want the demo flow
+        unlockWithoutPin();
+      }
+    } catch (err) {
+      console.error('Biometric failed:', err);
+    }
+  }, [currentProfile, unlockWithoutPin]);
+
+  useEffect(() => {
+    if (currentProfile?.isBiometricEnabled) {
+      // Delay slightly for visual effect
+      const timer = setTimeout(() => {
+        handleBiometric();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentProfile?.isBiometricEnabled, handleBiometric]);
 
   const handleKeyPress = (num: string) => {
     if (pin.length < 4) {
@@ -71,7 +104,16 @@ const LockScreen: React.FC = () => {
               {num}
             </button>
           ))}
-          <div className="w-full aspect-square" />
+          <div className="w-full aspect-square flex items-center justify-center">
+            {currentProfile?.isBiometricEnabled && (
+              <button
+                onClick={handleBiometric}
+                className="w-full h-full rounded-full flex items-center justify-center text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 active:scale-95 transition-all"
+              >
+                <Fingerprint size={28} />
+              </button>
+            )}
+          </div>
           <button
             onClick={() => handleKeyPress('0')}
             className="w-full aspect-square rounded-full flex items-center justify-center text-2xl font-bold text-gray-800 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

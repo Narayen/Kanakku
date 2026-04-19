@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2, Tag, Plus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { TransactionType, AutopayFrequency, Category, Autopay } from '../types';
 import { TEXT_COLORS } from '../constants';
@@ -12,11 +12,13 @@ interface AutopayModalProps {
 }
 
 const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, editAutopay }) => {
-  const { categories, addAutopay, updateAutopay } = useData();
+  const { categories, addAutopay, updateAutopay, tagHistory, addTagsToHistory, removeFromTagHistory } = useData();
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [categoryId, setCategoryId] = useState('');
   const [note, setNote] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [frequency, setFrequency] = useState<AutopayFrequency>(AutopayFrequency.MONTHLY);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('00:00');
@@ -27,6 +29,7 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
       setType(editAutopay.type);
       setCategoryId(editAutopay.categoryId);
       setNote(editAutopay.note || '');
+      setSelectedTags(editAutopay.tags || []);
       setFrequency(editAutopay.frequency);
       setStartDate(editAutopay.startDate);
       setStartTime(editAutopay.startTime || '00:00');
@@ -34,6 +37,7 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
       setAmount('');
       setType(TransactionType.EXPENSE);
       setNote('');
+      setSelectedTags([]);
       setFrequency(AutopayFrequency.MONTHLY);
       setStartDate(new Date().toISOString().split('T')[0]);
       setStartTime('00:00');
@@ -43,11 +47,25 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
     }
   }, [editAutopay, categories, isOpen]);
 
-  if (!isOpen) return null;
+  const handleAddTag = useCallback((tag: string) => {
+    const trimmed = tag.trim();
+    if (trimmed && !selectedTags.includes(trimmed)) {
+      setSelectedTags(prev => [...prev, trimmed]);
+      setTagInput('');
+    }
+  }, [selectedTags]);
+
+  const handleRemoveTag = (tag: string) => {
+    setSelectedTags(prev => prev.filter(t => t !== tag));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !categoryId || !startDate) return;
+
+    if (selectedTags.length > 0) {
+      addTagsToHistory(selectedTags);
+    }
 
     const autopayData = {
       bookId,
@@ -55,6 +73,7 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
       type,
       categoryId,
       note,
+      tags: selectedTags,
       frequency,
       startDate,
       startTime,
@@ -67,6 +86,8 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
     }
     onClose();
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -125,10 +146,77 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
             </button>
           </div>
 
+          {/* Tags */}
+          <div className="space-y-3">
+            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Tags (Optional)</label>
+            
+            <div className="relative">
+              <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <div className="flex flex-wrap gap-2 min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl pl-10 pr-4 py-2 border-2 border-transparent focus-within:border-primary-500 transition-all">
+                {selectedTags.map(tag => (
+                  <span key={tag} className="flex items-center gap-1 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-lg text-xs font-medium">
+                    {tag}
+                    <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-primary-900 dark:hover:text-white">
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+                <input 
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag(tagInput);
+                    }
+                  }}
+                  placeholder={selectedTags.length === 0 ? "Add tags..." : ""}
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white min-w-[60px]"
+                />
+                {tagInput.trim() && (
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddTag(tagInput)}
+                    className="p-1 text-primary-600 hover:bg-primary-100 rounded-md transition-colors"
+                  >
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {tagHistory.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                {tagHistory.map(tag => (
+                  <div key={tag} className="group flex items-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full pl-2.5 pr-1 py-1 transition-all">
+                    <button 
+                      type="button" 
+                      onClick={() => handleAddTag(tag)}
+                      className={`text-[10px] font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
+                    >
+                      {tag}
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromTagHistory(tag);
+                      }}
+                      className="ml-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Category Selection */}
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Category</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {categories.map((cat) => (
                 <button
                   key={cat.id}

@@ -21,7 +21,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
@@ -29,7 +29,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
       />
       
       {/* Modal Content */}
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+      <div className="relative w-full max-w-lg max-h-[95vh] overflow-y-auto custom-scrollbar animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
         <TransactionForm 
           onClose={onClose}
           preSelectedBookId={preSelectedBookId}

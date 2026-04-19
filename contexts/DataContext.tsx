@@ -23,6 +23,7 @@ declare global {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'expenSync_v1';
+const TAGS_STORAGE_KEY = 'expenSync_tags_v1';
 const DRIVE_FILE_NAME = 'expenSync_backup.json';
 
 const INITIAL_PROFILE: Profile = {
@@ -50,12 +51,18 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
   const [autopays, setAutopays] = useState<Autopay[]>([]);
+  const [tagHistory, setTagHistory] = useState<string[]>([]);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   
   // Load initial data
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
+    const savedTags = localStorage.getItem(TAGS_STORAGE_KEY);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    if (savedTags) {
+      setTagHistory(JSON.parse(savedTags));
+    }
 
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -103,6 +110,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ profiles, books, transactions, categories, autopays }));
     }
   }, [profiles, books, transactions, categories, autopays]);
+
+  useEffect(() => {
+    localStorage.setItem(TAGS_STORAGE_KEY, JSON.stringify(tagHistory));
+  }, [tagHistory]);
 
   const currentProfile = profiles.find(p => p.isCurrent) || profiles[0] || null;
 
@@ -304,6 +315,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isCategoryUsed = useCallback((id: string) => {
       return transactions.some(t => t.categoryId === id);
   }, [transactions]);
+
+  // --- Tag Actions ---
+
+  const addTagsToHistory = useCallback((tags: string[]) => {
+    if (!tags || tags.length === 0) return;
+    setTagHistory(prev => {
+      const newTags = tags.filter(tag => !prev.includes(tag));
+      if (newTags.length === 0) return prev;
+      return [...newTags, ...prev].slice(0, 50); // Keep last 50 unique tags
+    });
+  }, []);
+
+  const removeFromTagHistory = useCallback((tag: string) => {
+    setTagHistory(prev => prev.filter(t => t !== tag));
+  }, []);
 
   // --- Data Actions ---
 
@@ -657,6 +683,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     categories,
     autopays,
     currentProfile,
+    tagHistory,
     addProfile,
     switchProfile,
     updateProfileSettings,
@@ -666,6 +693,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addCategory,
     deleteCategory,
     isCategoryUsed,
+    addTagsToHistory,
+    removeFromTagHistory,
     reorderCategories,
     addBook,
     updateBook,

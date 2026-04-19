@@ -54,6 +54,7 @@ export interface Transaction {
   categoryId: string;
   date: string;
   note?: string;
+  tags?: string[];
   createdAt: number;
 }
 
@@ -64,6 +65,7 @@ export interface Autopay {
   type: TransactionType;
   categoryId: string;
   note?: string;
+  tags?: string[];
   frequency: AutopayFrequency;
   status: 'ACTIVE' | 'PAUSED';
   startDate: string;
@@ -78,6 +80,7 @@ export interface DataContextType {
   categories: Category[];
   autopays: Autopay[];
   currentProfile: Profile | null;
+  tagHistory: string[];
   
   // Profile Actions
   addProfile: (name: string) => void;
@@ -91,6 +94,10 @@ export interface DataContextType {
   addCategory: (category: Omit<Category, 'id'>) => void; // New action
   deleteCategory: (id: string) => void; // New action
   isCategoryUsed: (id: string) => boolean;
+
+  // Tag Actions
+  addTagsToHistory: (tags: string[]) => void;
+  removeFromTagHistory: (tag: string) => void;
 
   // Data Actions
   addBook: (book: Omit<Book, 'id' | 'profileId'>) => void;

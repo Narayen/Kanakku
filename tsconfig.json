@@ -26,5 +26,8 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "android/app/src/main/assets/public/assets"
+  ]
 }

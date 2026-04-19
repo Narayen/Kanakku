@@ -374,6 +374,15 @@ const Books: React.FC = () => {
                                      {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                      {tx.note && ` • ${tx.note.length > 20 ? tx.note.substring(0, 20) + '...' : tx.note}`}
                                    </p>
+                                   {tx.tags && tx.tags.length > 0 && (
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {tx.tags.map(tag => (
+                                         <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
+                                           {tag}
+                                         </span>
+                                       ))}
+                                     </div>
+                                   )}
                                </div>
                            </div>
                            <div className="flex items-center gap-1">

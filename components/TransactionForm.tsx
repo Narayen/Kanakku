@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Check, Clock, Trash2, AlertCircle, CircleHelp } from 'lucide-react';
+import { X, Calendar, Check, Clock, Trash2, AlertCircle, CircleHelp, Tag, Plus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { useToast } from '../contexts/ToastContext';
 import { TransactionType, Transaction } from '../types';
@@ -14,7 +14,11 @@ interface TransactionFormProps {
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedBookId, editTransaction, title }) => {
-  const { books, categories, addTransaction, updateTransaction, deleteTransaction, currentProfile } = useData();
+  const { 
+    books, categories, addTransaction, updateTransaction, 
+    deleteTransaction, currentProfile, tagHistory, 
+    addTagsToHistory, removeFromTagHistory 
+  } = useData();
   const { showToast } = useToast();
   
   // State
@@ -25,6 +29,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [note, setNote] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Filter books for current profile
@@ -40,6 +46,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
       setType(editTransaction.type || TransactionType.EXPENSE);
       setCategoryId(editTransaction.categoryId || '');
       setNote(editTransaction.note || '');
+      setSelectedTags(editTransaction.tags || []);
       
       try {
         const dateObj = new Date(editTransaction.date || Date.now());
@@ -86,8 +93,22 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
       setDate(`${year}-${month}-${day}`);
       setTime(`${hours}:${minutes}`);
       setType(TransactionType.EXPENSE);
+      setSelectedTags([]);
+      setTagInput('');
     }
   }, [editTransaction, preSelectedBookId, currentProfile, categories]);
+
+  const handleAddTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (trimmed && !selectedTags.includes(trimmed)) {
+      setSelectedTags(prev => [...prev, trimmed]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setSelectedTags(prev => prev.filter(t => t !== tagToRemove));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,8 +140,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
         type,
         categoryId,
         date: dateTime,
-        note
+        note,
+        tags: selectedTags
        });
+       addTagsToHistory(selectedTags);
        showToast("Transaction updated successfully", "success");
     } else {
        addTransaction({
@@ -129,8 +152,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
         type,
         categoryId,
         date: dateTime,
-        note
+        note,
+        tags: selectedTags
       });
+      addTagsToHistory(selectedTags);
       showToast("Transaction added successfully", "success");
     }
     
@@ -234,10 +259,77 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
           </div>
         )}
 
+        {/* Tags */}
+        <div className="space-y-3">
+          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Tags (Optional)</label>
+          
+          <div className="relative">
+            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <div className="flex flex-wrap gap-2 min-h-[44px] bg-gray-50 dark:bg-gray-800 rounded-xl pl-10 pr-4 py-2 border-2 border-transparent focus-within:border-primary-500 transition-all">
+              {selectedTags.map(tag => (
+                <span key={tag} className="flex items-center gap-1 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded-lg text-xs font-medium">
+                  {tag}
+                  <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-primary-900 dark:hover:text-white">
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+              <input 
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag(tagInput);
+                  }
+                }}
+                placeholder={selectedTags.length === 0 ? "Add tags..." : ""}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white min-w-[60px]"
+              />
+              {tagInput.trim() && (
+                <button 
+                  type="button" 
+                  onClick={() => handleAddTag(tagInput)}
+                  className="p-1 text-primary-600 hover:bg-primary-100 rounded-md transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {tagHistory.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+              {tagHistory.map(tag => (
+                <div key={tag} className="group flex items-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full pl-2.5 pr-1 py-1 transition-all">
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddTag(tag)}
+                    className={`text-[10px] font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
+                  >
+                    {tag}
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromTagHistory(tag);
+                    }}
+                    className="ml-1 p-0.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Category */}
         <div>
           <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Category</label>
-          <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+          <div className="grid grid-cols-5 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
             {(categories || []).filter(Boolean).map(cat => (
               <button
                 key={cat.id}
@@ -290,7 +382,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Lunch with client"
-            className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all"
+            className="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 py-3 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 transition-all text-sm"
           />
         </div>
 

@@ -21,9 +21,9 @@ const Layout: React.FC = () => {
       <header className="sticky top-0 z-30 bg-white dark:bg-cardbg shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between items-center">
         <div className="flex items-center gap-2">
            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center text-white font-bold">
-             ET
+             K
            </div>
-           <h1 className="text-xl font-bold tracking-tight text-primary-700 dark:text-primary-400">ET</h1>
+           <h1 className="text-xl font-bold tracking-tight text-primary-700 dark:text-primary-400">Kanakku</h1>
         </div>
         <div className="flex items-center gap-2 px-1 py-1">
            <ProfileIcon size={16} className="text-primary-600 dark:text-primary-400" />

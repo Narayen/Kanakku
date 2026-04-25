@@ -398,6 +398,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   };
 
+  const updateCategory = (id: string, updates: Partial<Category>) => {
+      setCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
   const deleteCategory = (id: string) => {
       if (id === 'cat_other') return; // Cannot delete the default category
       
@@ -532,9 +536,31 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           shouldProcess = true;
         } else if (ap.frequency === AutopayFrequency.WEEKLY && diffDays >= 7) {
           shouldProcess = true;
+        } else if (ap.frequency === AutopayFrequency.BI_WEEKLY && diffDays >= 14) {
+          shouldProcess = true;
         } else if (ap.frequency === AutopayFrequency.MONTHLY) {
           const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
           if (monthsDiff >= 1) {
+            shouldProcess = true;
+          }
+        } else if (ap.frequency === AutopayFrequency.BI_MONTHLY) {
+          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+          if (monthsDiff >= 2) {
+            shouldProcess = true;
+          }
+        } else if (ap.frequency === AutopayFrequency.QUARTERLY) {
+          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+          if (monthsDiff >= 3) {
+            shouldProcess = true;
+          }
+        } else if (ap.frequency === AutopayFrequency.HALF_YEARLY) {
+          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
+          if (monthsDiff >= 6) {
+            shouldProcess = true;
+          }
+        } else if (ap.frequency === AutopayFrequency.YEARLY) {
+          const yearsDiff = now.getFullYear() - lastDate.getFullYear();
+          if (yearsDiff >= 1 && (now.getMonth() > lastDate.getMonth() || (now.getMonth() === lastDate.getMonth() && now.getDate() >= lastDate.getDate()))) {
             shouldProcess = true;
           }
         }
@@ -632,11 +658,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const category = categories.find(c => c.id === tx.categoryId);
       return {
         'Date': new Date(tx.date).toISOString().split('T')[0],
+        'Time': tx.time || '',
         'Book': book?.name || 'Unknown Book',
         'Type': tx.type,
         'Category': category?.name || 'Uncategorized',
         'Amount': tx.amount,
         'Note': tx.note || '',
+        'Tags': tx.tags ? tx.tags.join('|') : '',
         'TransactionID': tx.id
       };
     });
@@ -740,6 +768,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (row['Amount'] && row['Date']) {
+            const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
             newTransactions.push({
                 id: uuidv4(),
                 bookId: book.id,
@@ -747,9 +776,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
                 categoryId: cat.id,
                 date: row['Date'],
+                time: row['Time'] || undefined,
                 note: row['Note'] || '',
+                tags: tags.length > 0 ? tags : undefined,
                 createdAt: Date.now()
             });
+            
+            if (tags.length > 0) {
+              addTagsToHistory(tags);
+            }
             importedCount++;
         }
       }
@@ -789,6 +824,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     togglePrivacyMode,
     toggleBookSelection,
     addCategory,
+    updateCategory,
     deleteCategory,
     isCategoryUsed,
     addTagsToHistory,

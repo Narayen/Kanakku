@@ -50,7 +50,8 @@ export const CATEGORY_ICONS = [
   'MoreHorizontal', 'MoreVertical', 'LayoutGrid', 'Shapes', 'CircleEllipsis', 'Pencil', 'Home', 'Smartphone', 'Wifi', 'Gift', 'Coffee',
   'Music', 'Film', 'Book', 'Plane', 'Gamepad', 'ShoppingBasket',
   'Train', 'Bus', 'Bike', 'Dumbbell', 'Stethoscope', 'GraduationCap',
-  'Lightbulb', 'Hammer', 'Wrench', 'Trash2', 'Cloud', 'Umbrella'
+  'Lightbulb', 'Hammer', 'Wrench', 'Trash2', 'Cloud', 'Umbrella',
+  'Gem', 'Coins', 'TrendingUp', 'SmartphoneCharging', 'CreditCard', 'Banknote'
 ];
 
 export const CURRENCIES = [

@@ -57,6 +57,7 @@ const Settings: React.FC = () => {
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('Utensils');
   const [newCatColor, setNewCatColor] = useState(TEXT_COLORS[0]);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   // Profile Editing State
   const [isEditingName, setIsEditingName] = useState(false);
@@ -64,6 +65,7 @@ const Settings: React.FC = () => {
 
   // Reset State
   const [resetConfirmCount, setResetConfirmCount] = useState(0);
+  const [showFinalResetConfirm, setShowFinalResetConfirm] = useState(false);
   const [showProfileDeleteConfirm, setShowProfileDeleteConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [showCategoryDeleteConfirm, setShowCategoryDeleteConfirm] = useState(false);
@@ -124,10 +126,29 @@ const Settings: React.FC = () => {
   const handleAddCategory = (e: React.FormEvent) => {
       e.preventDefault();
       if(newCatName.trim()) {
-          addCategory({ name: newCatName, icon: newCatIcon, color: newCatColor });
+          if (editingCategoryId) {
+              updateCategory(editingCategoryId, { 
+                  name: newCatName, 
+                  icon: newCatIcon, 
+                  color: newCatColor 
+              });
+              setEditingCategoryId(null);
+              showToast("Category updated", "success");
+          } else {
+              addCategory({ name: newCatName, icon: newCatIcon, color: newCatColor });
+              showToast("Category added", "success");
+          }
           setNewCatName('');
-          showToast("Category added", "success");
       }
+  };
+
+  const handleEditCategory = (cat: any) => {
+      setEditingCategoryId(cat.id);
+      setNewCatName(cat.name);
+      setNewCatIcon(cat.icon);
+      setNewCatColor(cat.color);
+      // Scroll to form
+      document.getElementById('category-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleDeleteCategory = (id: string) => {
@@ -160,7 +181,7 @@ const Settings: React.FC = () => {
       } else if (resetConfirmCount === 1) {
           setResetConfirmCount(2);
       } else {
-          resetAllData();
+          setShowFinalResetConfirm(true);
       }
   };
 
@@ -446,8 +467,8 @@ const Settings: React.FC = () => {
                   maxLength={4}
                   value={pinDraft}
                   onChange={e => setPinDraft(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="Enter 4 digits"
-                  className="w-full bg-white dark:bg-gray-800 border-2 border-primary-200 dark:border-primary-800 rounded-xl px-4 py-3 text-2xl font-bold tracking-[1em] text-center dark:text-white focus:outline-none focus:border-primary-500"
+                  placeholder="Four digits"
+                  className="w-full bg-white dark:bg-gray-800 border-2 border-primary-200 dark:border-primary-800 rounded-xl px-4 py-3 text-2xl font-bold tracking-[0.5em] text-center dark:text-white focus:outline-none focus:border-primary-500 placeholder:tracking-normal placeholder:font-normal placeholder:text-sm"
                   autoFocus
                 />
                 <div className="flex gap-2">
@@ -461,7 +482,7 @@ const Settings: React.FC = () => {
                   <button 
                     type="submit"
                     disabled={pinDraft.length !== 4}
-                    className="flex-3 py-3 bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary-500/20 disabled:opacity-50"
+                    className="flex-[2] py-3 bg-primary-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary-500/20 disabled:opacity-50 whitespace-nowrap px-2 flex items-center justify-center p-2"
                   >
                     Confirm & Enable
                   </button>
@@ -662,6 +683,13 @@ const Settings: React.FC = () => {
                     
                     <div className="flex items-center gap-1 transition-opacity">
                         <button 
+                            onClick={() => handleEditCategory(cat)}
+                            className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
+                            title="Edit"
+                        >
+                            <Edit2 size={16} />
+                        </button>
+                        <button 
                             disabled={index === 0 || cat.id === 'cat_other'}
                             onClick={() => handleMoveCategory(index, 'up')}
                             className="p-1.5 text-gray-400 hover:text-primary-600 disabled:opacity-20 transition-colors"
@@ -691,8 +719,25 @@ const Settings: React.FC = () => {
             ))}
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
-             <h4 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-4 uppercase tracking-widest ml-1">Add New Category</h4>
+        <div id="category-form" className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+             <div className="flex items-center justify-between mb-4">
+                 <h4 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest ml-1">
+                     {editingCategoryId ? 'Edit Category' : 'Add New Category'}
+                 </h4>
+                 {editingCategoryId && (
+                     <button 
+                        onClick={() => {
+                            setEditingCategoryId(null);
+                            setNewCatName('');
+                            setNewCatIcon('Utensils');
+                            setNewCatColor(TEXT_COLORS[0]);
+                        }}
+                        className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
+                     >
+                         Cancel Edit
+                     </button>
+                 )}
+             </div>
              <form onSubmit={handleAddCategory} className="space-y-4">
                  <input 
                     type="text" 
@@ -735,7 +780,9 @@ const Settings: React.FC = () => {
                     </div>
                  </div>
                  
-                 <button type="submit" className="w-full bg-primary-600 text-white text-sm font-medium py-3 rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-500/20 transition-all active:scale-95">Add Category</button>
+                 <button type="submit" className="w-full bg-primary-600 text-white text-sm font-medium py-3 rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-500/20 transition-all active:scale-95">
+                     {editingCategoryId ? 'Update Category' : 'Add Category'}
+                 </button>
              </form>
         </div>
       </section>
@@ -896,12 +943,45 @@ const Settings: React.FC = () => {
 
         <button 
             onClick={handleFactoryReset}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all whitespace-nowrap overflow-hidden text-ellipsis px-4"
         >
             {resetConfirmCount === 0 && "Reset All Data (Factory Reset)"}
             {resetConfirmCount === 1 && "Are you sure? Click again."}
-            {resetConfirmCount === 2 && "FINAL CONFIRM: WIPE EVERYTHING"}
+            {resetConfirmCount === 2 && "Click for Final Confirmation"}
         </button>
+
+        {showFinalResetConfirm && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-fade-in">
+                <div className="bg-white dark:bg-cardbg w-full max-w-sm rounded-2xl shadow-2xl border border-red-200 dark:border-red-900/50 overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="p-6 text-center">
+                        <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-red-50 dark:border-red-900/20">
+                            <AlertTriangle className="animate-bounce" size={40} />
+                        </div>
+                        <h3 className="text-2xl font-black text-gray-900 dark:text-white mb-3">Wipe All Data?</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-8 leading-relaxed">
+                            This is the <span className="font-bold text-red-600">final warning</span>. After this confirmation, <span className="font-bold">all your profiles, books, and transactions will be deleted</span> and reset to the initial state. This cannot be undone.
+                        </p>
+                        <div className="flex flex-col gap-3">
+                            <button 
+                                onClick={resetAllData}
+                                className="w-full py-4 bg-red-600 text-white rounded-xl font-bold text-sm uppercase tracking-widest shadow-xl shadow-red-500/40 hover:bg-red-700 transition-all active:scale-95"
+                            >
+                                YES, DELETE EVERYTHING
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    setShowFinalResetConfirm(false);
+                                    setResetConfirmCount(0);
+                                }}
+                                className="w-full py-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-700 transition-all"
+                            >
+                                NO, TAKE ME BACK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
       </section>
     </div>
   );

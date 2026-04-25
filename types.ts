@@ -13,7 +13,12 @@ export enum SyncFrequency {
 export enum AutopayFrequency {
   DAILY = 'DAILY',
   WEEKLY = 'WEEKLY',
+  BI_WEEKLY = 'BI_WEEKLY',
   MONTHLY = 'MONTHLY',
+  BI_MONTHLY = 'BI_MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  HALF_YEARLY = 'HALF_YEARLY',
+  YEARLY = 'YEARLY',
 }
 
 export interface Profile {
@@ -56,6 +61,7 @@ export interface Transaction {
   type: TransactionType;
   categoryId: string;
   date: string;
+  time?: string;
   note?: string;
   tags?: string[];
   createdAt: number;
@@ -95,6 +101,7 @@ export interface DataContextType {
   
   // Categories Actions
   addCategory: (category: Omit<Category, 'id'>) => void; // New action
+  updateCategory: (id: string, updates: Partial<Category>) => void; // New action
   deleteCategory: (id: string) => void; // New action
   isCategoryUsed: (id: string) => boolean;
 

@@ -261,7 +261,12 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
                 >
                   <option value={AutopayFrequency.DAILY}>Daily</option>
                   <option value={AutopayFrequency.WEEKLY}>Weekly</option>
+                  <option value={AutopayFrequency.BI_WEEKLY}>Bi-Weekly</option>
                   <option value={AutopayFrequency.MONTHLY}>Monthly</option>
+                  <option value={AutopayFrequency.BI_MONTHLY}>Bi-Monthly</option>
+                  <option value={AutopayFrequency.QUARTERLY}>Quarterly</option>
+                  <option value={AutopayFrequency.HALF_YEARLY}>Half Yearly</option>
+                  <option value={AutopayFrequency.YEARLY}>Yearly</option>
                 </select>
                 <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>

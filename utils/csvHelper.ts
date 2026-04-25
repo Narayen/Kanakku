@@ -1,7 +1,7 @@
 import { Transaction, TransactionType } from '../types';
 
 export const generateCSV = (transactions: Transaction[], books: any[], categories: any[]): string => {
-  const headers = ['Date', 'Book', 'Type', 'Category', 'Amount', 'Note', 'TransactionID'];
+  const headers = ['Date', 'Time', 'Book', 'Type', 'Category', 'Amount', 'Note', 'Tags', 'TransactionID'];
   
   const rows = transactions.map(tx => {
     const bookName = books.find(b => b.id === tx.bookId)?.name || 'Unknown Book';
@@ -9,14 +9,17 @@ export const generateCSV = (transactions: Transaction[], books: any[], categorie
     
     // Escape quotes and wrap in quotes to handle commas in notes/names
     const escape = (val: string | number | undefined) => `"${String(val || '').replace(/"/g, '""')}"`;
+    const tagStr = tx.tags ? tx.tags.join('|') : '';
 
     return [
       escape(new Date(tx.date).toISOString().split('T')[0]),
+      escape(tx.time || ''),
       escape(bookName),
       escape(tx.type),
       escape(catName),
       escape(tx.amount),
       escape(tx.note),
+      escape(tagStr),
       escape(tx.id)
     ].join(',');
   });
@@ -50,8 +53,8 @@ export const parseCSV = (csvText: string): any[] => {
   return data;
 };
 
-export const SAMPLE_CSV = `Date,Book,Type,Category,Amount,Note,TransactionID
-2023-10-25,Personal Savings,EXPENSE,Food & Dining,25.50,Lunch with team,
-2023-10-26,Business Account,INCOME,Salary,5000,October Salary,
-2023-10-27,Personal Savings,EXPENSE,Transportation,15.00,Uber,
+export const SAMPLE_CSV = `Date,Time,Book,Type,Category,Amount,Note,Tags,TransactionID
+2023-10-25,12:30,Personal Savings,EXPENSE,Food & Dining,25.50,Lunch with team,Lunch|Work,
+2023-10-26,09:00,Business Account,INCOME,Salary,5000,October Salary,,
+2023-10-27,15:45,Personal Savings,EXPENSE,Transportation,15.00,Uber,Travel,
 `;

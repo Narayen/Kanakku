@@ -24,6 +24,7 @@ const Layout: React.FC = () => {
              K
            </div>
            <h1 className="text-xl font-bold tracking-tight text-primary-700 dark:text-primary-400">Kanakku</h1>
+           <span className="hidden sm:inline text-[10px] font-bold text-gray-400 dark:text-gray-500 border-l border-gray-200 dark:border-gray-700 pl-2 ml-1 uppercase tracking-widest leading-none">Expense Tracker</span>
         </div>
         <div className="flex items-center gap-2 px-1 py-1">
            <ProfileIcon size={16} className="text-primary-600 dark:text-primary-400" />

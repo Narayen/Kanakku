@@ -549,6 +549,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           categoryId: ap.categoryId,
           date: todayStr,
           note: `[Autopay] ${ap.note || ''}`,
+          tags: ap.tags,
           createdAt: Date.now()
         };
         newTransactions.push(tx);

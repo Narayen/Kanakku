@@ -24,6 +24,7 @@ const Settings: React.FC = () => {
     categories,
     addCategory,
     deleteCategory,
+    updateCategory,
     isCategoryUsed,
     reorderCategories,
     resetAllData,

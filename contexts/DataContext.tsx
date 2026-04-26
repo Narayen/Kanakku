@@ -386,7 +386,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // --- Category Actions ---
 
-  const addCategory = (categoryData: Omit<Category, 'id'>) => {
+  const addCategory = useCallback((categoryData: Omit<Category, 'id'>) => {
       const newCat: Category = { ...categoryData, id: `cat_${Date.now()}` };
       setCategories(prev => {
         const othersIndex = prev.findIndex(c => c.id === 'cat_other');
@@ -396,13 +396,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updated.splice(othersIndex, 0, newCat);
         return updated;
       });
-  };
+  }, []);
 
-  const updateCategory = (id: string, updates: Partial<Category>) => {
+  const updateCategory = useCallback((id: string, updates: Partial<Category>) => {
       setCategories(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  };
+  }, []);
 
-  const deleteCategory = (id: string) => {
+  const deleteCategory = useCallback((id: string) => {
       if (id === 'cat_other') return; // Cannot delete the default category
       
       // Re-assign transactions to 'Others'
@@ -411,7 +411,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ));
       
       setCategories(prev => prev.filter(c => c.id !== id));
-  };
+  }, []);
 
   const isCategoryUsed = useCallback((id: string) => {
       return transactions.some(t => t.categoryId === id);
@@ -508,11 +508,40 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const processAutopays = useCallback(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
     const newTransactions: Transaction[] = [];
     const updatedAutopays = [...autopays];
-
     let changed = false;
+
+    const getNextOccurrence = (date: Date, frequency: AutopayFrequency): Date => {
+      const next = new Date(date.getTime());
+      switch (frequency) {
+        case AutopayFrequency.DAILY:
+          next.setDate(next.getDate() + 1);
+          break;
+        case AutopayFrequency.WEEKLY:
+          next.setDate(next.getDate() + 7);
+          break;
+        case AutopayFrequency.BI_WEEKLY:
+          next.setDate(next.getDate() + 14);
+          break;
+        case AutopayFrequency.MONTHLY:
+          next.setMonth(next.getMonth() + 1);
+          break;
+        case AutopayFrequency.BI_MONTHLY:
+          next.setMonth(next.getMonth() + 2);
+          break;
+        case AutopayFrequency.QUARTERLY:
+          next.setMonth(next.getMonth() + 3);
+          break;
+        case AutopayFrequency.HALF_YEARLY:
+          next.setMonth(next.getMonth() + 6);
+          break;
+        case AutopayFrequency.YEARLY:
+          next.setFullYear(next.getFullYear() + 1);
+          break;
+      }
+      return next;
+    };
 
     updatedAutopays.forEach((ap, index) => {
       if (ap.status !== 'ACTIVE') return;
@@ -523,64 +552,48 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (startDateTime > now) return;
 
-      let lastDate = ap.lastProcessedAt ? new Date(ap.lastProcessedAt) : startDateTime;
-      
-      let shouldProcess = false;
-      if (!ap.lastProcessedAt) {
-        shouldProcess = true;
+      let occurrenceToProcess: Date;
+      let lastProcessed = ap.lastProcessedAt;
+
+      if (!lastProcessed) {
+        // First time processing - start with the initial set date
+        occurrenceToProcess = new Date(startDateTime.getTime());
       } else {
-        const diffMs = now.getTime() - lastDate.getTime();
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        if (ap.frequency === AutopayFrequency.DAILY && diffDays >= 1) {
-          shouldProcess = true;
-        } else if (ap.frequency === AutopayFrequency.WEEKLY && diffDays >= 7) {
-          shouldProcess = true;
-        } else if (ap.frequency === AutopayFrequency.BI_WEEKLY && diffDays >= 14) {
-          shouldProcess = true;
-        } else if (ap.frequency === AutopayFrequency.MONTHLY) {
-          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
-          if (monthsDiff >= 1) {
-            shouldProcess = true;
-          }
-        } else if (ap.frequency === AutopayFrequency.BI_MONTHLY) {
-          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
-          if (monthsDiff >= 2) {
-            shouldProcess = true;
-          }
-        } else if (ap.frequency === AutopayFrequency.QUARTERLY) {
-          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
-          if (monthsDiff >= 3) {
-            shouldProcess = true;
-          }
-        } else if (ap.frequency === AutopayFrequency.HALF_YEARLY) {
-          const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth());
-          if (monthsDiff >= 6) {
-            shouldProcess = true;
-          }
-        } else if (ap.frequency === AutopayFrequency.YEARLY) {
-          const yearsDiff = now.getFullYear() - lastDate.getFullYear();
-          if (yearsDiff >= 1 && (now.getMonth() > lastDate.getMonth() || (now.getMonth() === lastDate.getMonth() && now.getDate() >= lastDate.getDate()))) {
-            shouldProcess = true;
-          }
-        }
+        // Find the next occurrence after the last one we handled
+        occurrenceToProcess = getNextOccurrence(new Date(lastProcessed), ap.frequency);
       }
 
-      if (shouldProcess) {
+      // Process all occurrences up to 'now'
+      let lastOccurrenceTime = lastProcessed;
+      let apChanged = false;
+      while (occurrenceToProcess <= now) {
+        const txDateStr = occurrenceToProcess.toISOString().split('T')[0];
+        const txTimeStr = occurrenceToProcess.toTimeString().split(' ')[0].substring(0, 5);
+
         const tx: Transaction = {
           id: uuidv4(),
           bookId: ap.bookId,
           amount: ap.amount,
           type: ap.type,
           categoryId: ap.categoryId,
-          date: todayStr,
+          date: txDateStr,
+          time: txTimeStr,
           note: `[Autopay] ${ap.note || ''}`,
           tags: ap.tags,
           createdAt: Date.now()
         };
+
         newTransactions.push(tx);
-        updatedAutopays[index] = { ...ap, lastProcessedAt: Date.now() };
+        lastOccurrenceTime = occurrenceToProcess.getTime();
+        
+        // Move to next occurrence for the loop check
+        occurrenceToProcess = getNextOccurrence(occurrenceToProcess, ap.frequency);
+        apChanged = true;
         changed = true;
+      }
+
+      if (apChanged && lastOccurrenceTime) {
+        updatedAutopays[index] = { ...ap, lastProcessedAt: lastOccurrenceTime };
       }
     });
 

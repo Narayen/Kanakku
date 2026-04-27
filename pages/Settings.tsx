@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import * as XLSX from 'xlsx';
 import { 
   Moon, Sun, Monitor, Cloud, User, Download, Upload, FileText, CheckCircle, 
-  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon, Shield, Lock, Fingerprint
+  ChevronUp, ChevronDown, Trash2, Globe, Layers, AlertTriangle, Plus, X, Settings as SettingsIcon, Edit2, Check, CircleHelp, Book as BookIcon, Shield, Lock, Fingerprint, Tag
 } from 'lucide-react';
 import { 
   CURRENCIES, PROFILE_ICONS, CATEGORY_ICONS, TEXT_COLORS, TEXT_COLOR_NAMES
@@ -39,7 +39,10 @@ const Settings: React.FC = () => {
     disableAppPin,
     lockApp,
     toggleBiometric,
-    isBiometricSupported
+    isBiometricSupported,
+    tagHistory,
+    addTag,
+    removeFromTagHistory
   } = useData();
   const { showToast } = useToast();
 
@@ -783,6 +786,57 @@ const Settings: React.FC = () => {
                  
                  <button type="submit" className="w-full bg-primary-600 text-white text-sm font-medium py-3 rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-500/20 transition-all active:scale-95">
                      {editingCategoryId ? 'Update Category' : 'Add Category'}
+                 </button>
+             </form>
+        </div>
+      </section>
+
+      {/* Tags Management */}
+      <section className="bg-white dark:bg-cardbg rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
+         <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+          <Tag className="text-emerald-500" size={14} /> Manage Tags
+        </h3>
+        
+        <div className="flex flex-wrap gap-2 mb-6">
+            {tagHistory.map((tag) => (
+                <div key={tag} className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700">
+                    <span className="text-sm font-medium dark:text-gray-300">{tag}</span>
+                    <button 
+                        onClick={() => removeFromTagHistory(tag)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                        title="Remove Tag"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            ))}
+            {tagHistory.length === 0 && (
+                <p className="text-xs text-gray-400 italic">No tags added yet.</p>
+            )}
+        </div>
+
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl">
+             <h4 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                 Add New Tag
+             </h4>
+             <form onSubmit={(e) => {
+                 e.preventDefault();
+                 const form = e.target as HTMLFormElement;
+                 const input = form.elements.namedItem('tag_name') as HTMLInputElement;
+                 if (input.value.trim()) {
+                     addTag(input.value.trim());
+                     input.value = '';
+                     showToast("Tag added", "success");
+                 }
+             }} className="flex gap-2">
+                 <input 
+                    name="tag_name"
+                    type="text" 
+                    placeholder="Tag name (e.g. Travel)" 
+                    className="flex-1 bg-white dark:bg-cardbg border-none rounded-lg px-3 py-2.5 text-sm dark:text-white focus:ring-2 focus:ring-primary-500"
+                 />
+                 <button type="submit" className="bg-primary-600 text-white p-2.5 rounded-lg hover:bg-primary-700 transition-all active:scale-95">
+                     <Plus size={20} />
                  </button>
              </form>
         </div>

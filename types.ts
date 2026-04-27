@@ -106,6 +106,7 @@ export interface DataContextType {
   isCategoryUsed: (id: string) => boolean;
 
   // Tag Actions
+  addTag: (tag: string) => void;
   addTagsToHistory: (tags: string[]) => void;
   removeFromTagHistory: (tag: string) => void;
 

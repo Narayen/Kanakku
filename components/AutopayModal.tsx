@@ -199,25 +199,14 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
             {tagHistory.length > 0 && (
               <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
                 {tagHistory.map(tag => (
-                  <div key={tag} className="group flex items-center bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full pl-2.5 pr-1 py-1 transition-all">
-                    <button 
-                      type="button" 
-                      onClick={() => handleAddTag(tag)}
-                      className={`text-xs font-medium transition-colors ${selectedTags.includes(tag) ? 'text-primary-500' : 'text-gray-600 dark:text-gray-400'}`}
-                    >
-                      {tag}
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFromTagHistory(tag);
-                      }}
-                      className="ml-1 p-0.5 text-gray-400 hover:text-red-500 transition-opacity"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
+                  <button 
+                    key={tag}
+                    type="button" 
+                    onClick={() => handleAddTag(tag)}
+                    className={`flex items-center px-3 py-1 rounded-full text-xs font-medium transition-all ${selectedTags.includes(tag) ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/40 dark:text-primary-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                  >
+                    {tag}
+                  </button>
                 ))}
               </div>
             )}

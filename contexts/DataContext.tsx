@@ -424,7 +424,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTagHistory(prev => {
       const newTags = tags.filter(tag => !prev.includes(tag));
       if (newTags.length === 0) return prev;
-      return [...newTags, ...prev].slice(0, 50); // Keep last 50 unique tags
+      return [...prev, ...newTags].sort((a, b) => a.localeCompare(b));
+    });
+  }, []);
+
+  const addTag = useCallback((tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    setTagHistory(prev => {
+      if (prev.includes(trimmed)) return prev;
+      return [...prev, trimmed].sort((a, b) => a.localeCompare(b));
     });
   }, []);
 
@@ -840,6 +849,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateCategory,
     deleteCategory,
     isCategoryUsed,
+    addTag,
     addTagsToHistory,
     removeFromTagHistory,
     reorderCategories,

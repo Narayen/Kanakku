@@ -878,6 +878,17 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let importedTransactionsCount = 0;
       let importedAutopaysCount = 0;
       let importedTagsCount = 0;
+      let skippedCount = 0;
+
+      // Fingerprint helper to detect duplicates without IDs
+      const getTxFingerprint = (tx: any) => `${tx.bookId}|${tx.amount}|${tx.type}|${tx.categoryId}|${tx.date}|${tx.time || '00:00'}|${tx.note || ''}`;
+      const getApFingerprint = (ap: any) => `${ap.bookId}|${ap.amount}|${ap.type}|${ap.categoryId}|${ap.frequency}|${ap.startDate}|${ap.startTime || '00:00'}|${ap.note || ''}`;
+
+      // Create sets for fast lookup of existing data
+      const existingTxIds = new Set(transactions.map(t => t.id));
+      const existingTxFingerprints = new Set(transactions.map(getTxFingerprint));
+      const existingApIds = new Set(autopays.map(a => a.id));
+      const existingApFingerprints = new Set(autopays.map(getApFingerprint));
 
       // Helper to find or create book/category
       const getBookAndCategory = (row: any) => {
@@ -915,7 +926,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       for (const row of transactionRows) {
         if (row['Amount'] && row['Date']) {
           const { book, cat } = getBookAndCategory(row);
-          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          
+          const rowId = row['TransactionID'];
+
           let rowTime = row['Time'];
           if (!rowTime && row['Date'] && row['Date'].includes('T')) {
             try {
@@ -925,16 +938,29 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }
             } catch (e) {}
           }
+          rowTime = rowTime || '00:00';
 
-          newTransactions.push({
-            id: uuidv4(),
+          const tempTx = {
             bookId: book.id,
             amount: parseFloat(row['Amount']),
             type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
             categoryId: cat.id,
             date: row['Date'],
-            time: rowTime || '00:00',
-            note: row['Note'] || '',
+            time: rowTime,
+            note: row['Note'] || ''
+          };
+
+          // Check for duplicates by ID or Fingerprint
+          if ((rowId && existingTxIds.has(rowId)) || existingTxFingerprints.has(getTxFingerprint(tempTx))) {
+            skippedCount++;
+            continue;
+          }
+
+          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+
+          newTransactions.push({
+            id: rowId || uuidv4(),
+            ...tempTx,
             tags: tags.length > 0 ? tags : undefined,
             createdAt: Date.now()
           });
@@ -950,20 +976,32 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       for (const row of autopayRows) {
         if (row['Amount'] && row['Frequency']) {
           const { book, cat } = getBookAndCategory(row);
-          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
           
-          newAutopays.push({
-            id: uuidv4(),
+          const rowId = row['AutopayID'];
+          const tempAp = {
             bookId: book.id,
             amount: parseFloat(row['Amount']),
             type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
             categoryId: cat.id,
             note: row['Note'] || '',
-            tags: tags.length > 0 ? tags : undefined,
             frequency: row['Frequency'] as AutopayFrequency,
-            status: (row['Status'] || 'ACTIVE') as 'ACTIVE' | 'PAUSED',
             startDate: row['StartDate'] || new Date().toISOString().split('T')[0],
             startTime: row['StartTime'] || '00:00',
+          };
+
+          // Check for duplicates by ID or Fingerprint
+          if ((rowId && existingApIds.has(rowId)) || existingApFingerprints.has(getApFingerprint(tempAp))) {
+            skippedCount++;
+            continue;
+          }
+
+          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          
+          newAutopays.push({
+            id: rowId || uuidv4(),
+            ...tempAp,
+            tags: tags.length > 0 ? tags : undefined,
+            status: (row['Status'] || 'ACTIVE') as 'ACTIVE' | 'PAUSED',
             lastProcessedAt: undefined
           });
 
@@ -977,9 +1015,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Process Tags
       for (const row of tagRows) {
         const tagName = row['TagName'];
-        if (tagName) {
+        if (tagName && !tagHistory.includes(tagName)) {
           addTag(tagName);
           importedTagsCount++;
+        } else if (tagName) {
+          skippedCount++;
         }
       }
 
@@ -999,11 +1039,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setAutopays(prev => [...prev, ...newAutopays]);
       }
       
-      let message = `Successfully imported ${importedTransactionsCount} transactions.`;
+      let message = `Imported ${importedTransactionsCount} transactions.`;
       if (importedAutopaysCount > 0) message += ` ${importedAutopaysCount} autopays.`;
       if (importedTagsCount > 0) message += ` ${importedTagsCount} tags.`;
+      if (skippedCount > 0) message += ` (${skippedCount} duplicates skipped)`;
 
-      return { success: true, message };
+      return { success: true, message: message.trim() };
     } catch (e: any) {
       return { success: false, message: e.message || "Failed to import data" };
     }

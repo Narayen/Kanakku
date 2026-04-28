@@ -450,14 +450,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addTagsToHistory = useCallback((tags: string[]) => {
     if (!tags || tags.length === 0) return;
     setTagHistory(prev => {
-      const newTags = tags.filter(tag => !prev.includes(tag));
+      const newTags = tags
+        .map(t => t.trim().substring(0, 30))
+        .filter(tag => tag && !prev.includes(tag));
       if (newTags.length === 0) return prev;
       return [...prev, ...newTags].sort((a, b) => a.localeCompare(b));
     });
   }, []);
 
   const addTag = useCallback((tag: string) => {
-    const trimmed = tag.trim();
+    const trimmed = tag.trim().substring(0, 30);
     if (!trimmed) return;
     setTagHistory(prev => {
       if (prev.includes(trimmed)) return prev;
@@ -956,7 +958,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             continue;
           }
 
-          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          const tags = row['Tags'] 
+            ? row['Tags'].split('|')
+                .map((t: string) => t.trim().substring(0, 30))
+                .filter(Boolean) 
+            : [];
 
           newTransactions.push({
             id: rowId || uuidv4(),
@@ -995,7 +1001,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             continue;
           }
 
-          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          const tags = row['Tags'] 
+            ? row['Tags'].split('|')
+                .map((t: string) => t.trim().substring(0, 30))
+                .filter(Boolean) 
+            : [];
           
           newAutopays.push({
             id: rowId || uuidv4(),

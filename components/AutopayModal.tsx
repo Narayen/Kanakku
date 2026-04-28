@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2, Tag, Plus, CircleHelp } from 'lucide-react';
+import { X, Calendar, Repeat, Info, ChevronDown, Play, Pause, Trash2, Tag, Plus, CircleHelp, AlertCircle } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { TransactionType, AutopayFrequency, Category, Autopay } from '../types';
@@ -51,6 +51,7 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
 
   const handleAddTag = useCallback((tag: string) => {
     const trimmed = tag.trim();
+    if (trimmed.length > 30) return;
     if (trimmed && !selectedTags.includes(trimmed)) {
       setSelectedTags(prev => [...prev, trimmed]);
       setTagInput('');
@@ -183,9 +184,9 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
                     }
                   }}
                   placeholder={selectedTags.length === 0 ? "Add tags..." : ""}
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white min-w-[60px]"
+                  className={`flex-1 bg-transparent border-none outline-none text-sm min-w-[60px] ${tagInput.length > 30 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}
                 />
-                {tagInput.trim() && (
+                {tagInput.trim() && tagInput.length <= 30 && (
                   <button 
                     type="button" 
                     onClick={() => handleAddTag(tagInput)}
@@ -195,6 +196,12 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
                   </button>
                 )}
               </div>
+              {tagInput.length > 30 && (
+                <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                  <AlertCircle size={10} className="inline" />
+                  Error: Tag cannot exceed 30 characters
+                </p>
+              )}
             </div>
 
             {tagHistory.length > 0 && (

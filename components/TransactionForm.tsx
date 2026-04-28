@@ -100,6 +100,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
 
   const handleAddTag = (tag: string) => {
     const trimmed = tag.trim();
+    if (trimmed.length > 30) return;
     if (trimmed && !selectedTags.includes(trimmed)) {
       setSelectedTags(prev => [...prev, trimmed]);
       setTagInput('');
@@ -287,9 +288,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
                   }
                 }}
                 placeholder={selectedTags.length === 0 ? "Add tags..." : ""}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white min-w-[60px]"
+                className={`flex-1 bg-transparent border-none outline-none text-sm min-w-[60px] ${tagInput.length > 30 ? 'text-red-500' : 'text-gray-900 dark:text-white'}`}
               />
-              {tagInput.trim() && (
+              {tagInput.trim() && tagInput.length <= 30 && (
                 <button 
                   type="button" 
                   onClick={() => handleAddTag(tagInput)}
@@ -299,6 +300,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
                 </button>
               )}
             </div>
+            {tagInput.length > 30 && (
+              <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                <AlertCircle size={10} />
+                Error: Tag cannot exceed 30 characters
+              </p>
+            )}
           </div>
 
           {tagHistory.length > 0 && (

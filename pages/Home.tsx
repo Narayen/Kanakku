@@ -247,15 +247,20 @@ const Home: React.FC = () => {
                           <p className="text-[10px] text-gray-500 truncate">
                              {truncatedBookName} • {formattedDate}
                           </p>
-                          {tx.tags && tx.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {tx.tags.map(tag => (
-                                <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                           {tx.tags && tx.tags.length > 0 && (
+                             <div className="flex flex-wrap gap-1 mt-1">
+                               {tx.tags.slice(0, 2).map(tag => (
+                                 <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter max-w-[60px] truncate">
+                                   {tag}
+                                 </span>
+                               ))}
+                               {tx.tags.length > 2 && (
+                                 <span className="text-[7px] bg-primary-50 dark:bg-primary-900/20 text-primary-600 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
+                                   +{tx.tags.length - 2} more
+                                 </span>
+                               )}
+                             </div>
+                           )}
                        </div>
                     </div>
                     <div className="flex items-center gap-1">

@@ -667,20 +667,68 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // --- Import / Export ---
 
   const downloadTemplate = useCallback(() => {
-    const fileName = 'expenses_template.csv';
+    const fileName = 'expenSync_template.xlsx';
     
+    // Create template data for Transactions
+    const transactionTemplate = [
+      {
+        'Date': new Date().toISOString().split('T')[0],
+        'Time': '12:00',
+        'Book': 'Personal Wallet',
+        'Type': 'EXPENSE',
+        'Category': 'Food & Dining',
+        'Amount': 25.50,
+        'Note': 'Example transaction',
+        'Tags': 'Food|Social',
+        'TransactionID': ''
+      }
+    ];
+
+    // Create template data for Autopays
+    const autopayTemplate = [
+      {
+        'Book': 'Personal Wallet',
+        'Type': 'EXPENSE',
+        'Category': 'Bills',
+        'Amount': 1000,
+        'Frequency': 'MONTHLY',
+        'Status': 'ACTIVE',
+        'StartDate': new Date().toISOString().split('T')[0],
+        'StartTime': '09:00',
+        'Note': 'Monthly Rent',
+        'Tags': 'Rent|Home',
+        'AutopayID': ''
+      }
+    ];
+
+    // Create template data for Tags
+    const tagTemplate = [
+      { 'TagName': 'Medical' },
+      { 'TagName': 'Gift' }
+    ];
+
+    // Create workbook and add sheets
+    const wb = XLSX.utils.book_new();
+    
+    const wsTransactions = XLSX.utils.json_to_sheet(transactionTemplate);
+    XLSX.utils.book_append_sheet(wb, wsTransactions, "Transactions");
+
+    const wsAutopays = XLSX.utils.json_to_sheet(autopayTemplate);
+    XLSX.utils.book_append_sheet(wb, wsAutopays, "Autopays");
+
+    const wsTags = XLSX.utils.json_to_sheet(tagTemplate);
+    XLSX.utils.book_append_sheet(wb, wsTags, "Tags");
+
     if (Capacitor.isNativePlatform()) {
       const handleNativeDownload = async () => {
         try {
-          // Save to cache directory
+          const base64Data = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
           const result = await Filesystem.writeFile({
             path: fileName,
-            data: SAMPLE_CSV,
+            data: base64Data,
             directory: Directory.Cache,
-            encoding: 'utf8' as any, // Filesystem encoding type
           });
 
-          // Share the file
           await Share.share({
             title: 'Download Template',
             text: 'Here is the import template',
@@ -694,7 +742,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       handleNativeDownload();
     } else {
-      const blob = new Blob([SAMPLE_CSV], { type: 'text/csv' });
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -708,9 +757,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentProfile) return;
     const profileBookIds = books.filter(b => b.profileId === currentProfile.id).map(b => b.id);
     const profileTransactions = transactions.filter(t => profileBookIds.includes(t.bookId));
+    const profileAutopays = autopays.filter(a => profileBookIds.includes(a.bookId));
     
-    // Prepare data for Excel
-    const data = profileTransactions.map(tx => {
+    // Prepare transaction data
+    const transactionData = profileTransactions.map(tx => {
       const book = books.find(b => b.id === tx.bookId);
       const category = categories.find(c => c.id === tx.categoryId);
       return {
@@ -726,32 +776,60 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     });
 
-    // Create worksheet
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+    // Prepare autopay data
+    const autopayData = profileAutopays.map(ap => {
+      const book = books.find(b => b.id === ap.bookId);
+      const category = categories.find(c => c.id === ap.categoryId);
+      return {
+        'Book': book?.name || 'Unknown Book',
+        'Type': ap.type,
+        'Category': category?.name || 'Uncategorized',
+        'Amount': ap.amount,
+        'Frequency': ap.frequency,
+        'Status': ap.status,
+        'StartDate': ap.startDate,
+        'StartTime': ap.startTime || '00:00',
+        'Note': ap.note || '',
+        'Tags': ap.tags ? ap.tags.join('|') : '',
+        'AutopayID': ap.id
+      };
+    });
 
-    // Generate Excel file and trigger download
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    // Prepare tag data
+    const tagData = tagHistory.map(tag => ({ 'TagName': tag }));
+
+    // Create workbook and add sheets
+    const wb = XLSX.utils.book_new();
+    
+    const wsTransactions = XLSX.utils.json_to_sheet(transactionData);
+    XLSX.utils.book_append_sheet(wb, wsTransactions, "Transactions");
+
+    if (autopayData.length > 0) {
+      const wsAutopays = XLSX.utils.json_to_sheet(autopayData);
+      XLSX.utils.book_append_sheet(wb, wsAutopays, "Autopays");
+    }
+
+    if (tagData.length > 0) {
+      const wsTags = XLSX.utils.json_to_sheet(tagData);
+      XLSX.utils.book_append_sheet(wb, wsTags, "Tags");
+    }
+
+    // Generate filename
     const fileName = `ET_${currentProfile.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
 
     if (Capacitor.isNativePlatform()) {
-      // Native Export (Android/iOS)
       const handleNativeExport = async () => {
         try {
           const base64Data = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-          
-          // Save to temporary directory
           const result = await Filesystem.writeFile({
             path: fileName,
             data: base64Data,
             directory: Directory.Cache,
           });
 
-          // Share the file
           await Share.share({
-            title: 'Export Transactions',
-            text: 'Here is your transaction export',
+            title: 'Export Data',
+            text: 'Here is your data export',
             files: [result.uri],
             dialogTitle: 'Share Export',
           });
@@ -760,10 +838,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           alert('Export failed. Please check permissions.');
         }
       };
-      
       handleNativeExport();
     } else {
-      // Browser Export
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -772,87 +849,137 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       a.click();
       window.URL.revokeObjectURL(url);
     }
-  }, [currentProfile, books, transactions, categories]);
+  }, [currentProfile, books, transactions, categories, autopays, tagHistory]);
 
-  const importData = async (input: string | any[]): Promise<{ success: boolean; message: string }> => {
+  const importData = async (input: string | any[] | { transactions?: any[], autopays?: any[], tags?: any[] }): Promise<{ success: boolean; message: string }> => {
     try {
       if (!currentProfile) throw new Error("No profile selected");
       
-      let rows: any[] = [];
+      let transactionRows: any[] = [];
+      let autopayRows: any[] = [];
+      let tagRows: any[] = [];
+
       if (typeof input === 'string') {
-        rows = parseCSV(input);
+        transactionRows = parseCSV(input);
+      } else if (Array.isArray(input)) {
+        transactionRows = input;
       } else {
-        rows = input;
+        transactionRows = input.transactions || [];
+        autopayRows = input.autopays || [];
+        tagRows = input.tags || [];
       }
 
       const newTransactions: Transaction[] = [];
+      const newAutopays: Autopay[] = [];
       const newBooks: Book[] = [];
       const localBooks = [...books];
       const localCategories = [...categories];
       const newlyCreatedCategories: Category[] = [];
-      let importedCount = 0;
+      let importedTransactionsCount = 0;
+      let importedAutopaysCount = 0;
+      let importedTagsCount = 0;
 
-      for (const row of rows) {
+      // Helper to find or create book/category
+      const getBookAndCategory = (row: any) => {
         const bookName = row['Book'] || 'Imported Book';
         let book = localBooks.find(b => b.name === bookName && b.profileId === currentProfile.id);
-        
         if (!book) {
-            const newBookId = uuidv4();
-            book = {
-                id: newBookId,
-                profileId: currentProfile.id,
-                name: bookName,
-                currency: currentProfile.currency || 'INR',
-                color: 'bg-gray-500'
-            };
-            localBooks.push(book);
-            newBooks.push(book);
+          const newBookId = uuidv4();
+          book = {
+            id: newBookId,
+            profileId: currentProfile.id,
+            name: bookName,
+            currency: currentProfile.currency || 'INR',
+            color: 'bg-gray-500'
+          };
+          localBooks.push(book);
+          newBooks.push(book);
         }
 
         const catName = row['Category'] || 'Uncategorized';
         let cat = localCategories.find(c => c.name.toLowerCase() === catName.toLowerCase());
-        
-        // If category doesn't exist, create it!
         if (!cat) {
-            cat = {
-                id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                name: catName,
-                icon: 'Layers', // Default icon for new categories
-                color: 'text-gray-500' // Default color
-            };
-            localCategories.push(cat);
-            newlyCreatedCategories.push(cat);
+          cat = {
+            id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+            name: catName,
+            icon: 'Layers',
+            color: 'text-gray-500'
+          };
+          localCategories.push(cat);
+          newlyCreatedCategories.push(cat);
         }
+        return { book, cat };
+      };
 
+      // Process Transactions
+      for (const row of transactionRows) {
         if (row['Amount'] && row['Date']) {
-            const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
-            let rowTime = row['Time'];
-            if (!rowTime && row['Date'] && row['Date'].includes('T')) {
-                try {
-                    const d = new Date(row['Date']);
-                    if (!isNaN(d.getTime())) {
-                        rowTime = d.toTimeString().split(' ')[0].substring(0, 5);
-                    }
-                } catch (e) {}
-            }
+          const { book, cat } = getBookAndCategory(row);
+          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          let rowTime = row['Time'];
+          if (!rowTime && row['Date'] && row['Date'].includes('T')) {
+            try {
+              const d = new Date(row['Date']);
+              if (!isNaN(d.getTime())) {
+                rowTime = d.toTimeString().split(' ')[0].substring(0, 5);
+              }
+            } catch (e) {}
+          }
 
-            newTransactions.push({
-                id: uuidv4(),
-                bookId: book.id,
-                amount: parseFloat(row['Amount']),
-                type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
-                categoryId: cat.id,
-                date: row['Date'],
-                time: rowTime || '00:00',
-                note: row['Note'] || '',
-                tags: tags.length > 0 ? tags : undefined,
-                createdAt: Date.now()
-            });
-            
-            if (tags.length > 0) {
-              addTagsToHistory(tags);
-            }
-            importedCount++;
+          newTransactions.push({
+            id: uuidv4(),
+            bookId: book.id,
+            amount: parseFloat(row['Amount']),
+            type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
+            categoryId: cat.id,
+            date: row['Date'],
+            time: rowTime || '00:00',
+            note: row['Note'] || '',
+            tags: tags.length > 0 ? tags : undefined,
+            createdAt: Date.now()
+          });
+          
+          if (tags.length > 0) {
+            addTagsToHistory(tags);
+          }
+          importedTransactionsCount++;
+        }
+      }
+
+      // Process Autopays
+      for (const row of autopayRows) {
+        if (row['Amount'] && row['Frequency']) {
+          const { book, cat } = getBookAndCategory(row);
+          const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+          
+          newAutopays.push({
+            id: uuidv4(),
+            bookId: book.id,
+            amount: parseFloat(row['Amount']),
+            type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
+            categoryId: cat.id,
+            note: row['Note'] || '',
+            tags: tags.length > 0 ? tags : undefined,
+            frequency: row['Frequency'] as AutopayFrequency,
+            status: (row['Status'] || 'ACTIVE') as 'ACTIVE' | 'PAUSED',
+            startDate: row['StartDate'] || new Date().toISOString().split('T')[0],
+            startTime: row['StartTime'] || '00:00',
+            lastProcessedAt: undefined
+          });
+
+          if (tags.length > 0) {
+            addTagsToHistory(tags);
+          }
+          importedAutopaysCount++;
+        }
+      }
+
+      // Process Tags
+      for (const row of tagRows) {
+        const tagName = row['TagName'];
+        if (tagName) {
+          addTag(tagName);
+          importedTagsCount++;
         }
       }
 
@@ -864,9 +991,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCategories(prev => [...prev, ...newlyCreatedCategories]);
       }
 
-      setTransactions(prev => [...newTransactions, ...prev]);
+      if (newTransactions.length > 0) {
+        setTransactions(prev => [...newTransactions, ...prev]);
+      }
+
+      if (newAutopays.length > 0) {
+        setAutopays(prev => [...prev, ...newAutopays]);
+      }
       
-      return { success: true, message: `Successfully imported ${importedCount} transactions.` };
+      let message = `Successfully imported ${importedTransactionsCount} transactions.`;
+      if (importedAutopaysCount > 0) message += ` ${importedAutopaysCount} autopays.`;
+      if (importedTagsCount > 0) message += ` ${importedTagsCount} tags.`;
+
+      return { success: true, message };
     } catch (e: any) {
       return { success: false, message: e.message || "Failed to import data" };
     }

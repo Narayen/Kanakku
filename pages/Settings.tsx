@@ -198,24 +198,34 @@ const Settings: React.FC = () => {
 
     reader.onload = async (event) => {
       try {
-        let data: any[] = [];
+        let importInput: any = [];
         if (isExcel) {
           const bstr = event.target?.result;
           const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          data = XLSX.utils.sheet_to_json(ws);
+          
+          const result: { transactions?: any[], autopays?: any[], tags?: any[] } = {};
+          
+          if (wb.SheetNames.includes("Transactions")) {
+            result.transactions = XLSX.utils.sheet_to_json(wb.Sheets["Transactions"]);
+          } else {
+            // Fallback to first sheet if named differently or using old template
+            result.transactions = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+          }
+
+          if (wb.SheetNames.includes("Autopays")) {
+            result.autopays = XLSX.utils.sheet_to_json(wb.Sheets["Autopays"]);
+          }
+
+          if (wb.SheetNames.includes("Tags")) {
+            result.tags = XLSX.utils.sheet_to_json(wb.Sheets["Tags"]);
+          }
+
+          importInput = result;
         } else {
-          const text = event.target?.result as string;
-          // We can still use importData for CSV, but let's make it more flexible
-          const result = await importData(text);
-          setImportStatus(result.message);
-          return;
+          importInput = event.target?.result as string;
         }
 
-        // For Excel data, we need a way to pass the parsed objects to importData
-        // Let's update importData to accept either string or objects
-        const result = await importData(data);
+        const result = await importData(importInput);
         setImportStatus(result.message);
       } catch (error) {
         setImportStatus("Failed to parse file");

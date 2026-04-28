@@ -11,8 +11,8 @@ import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
 import ErrorBoundary from './components/ErrorBoundary';
 
-const ThemeController = () => {
-  const { currentProfile } = useData();
+const AppContent: React.FC = () => {
+  const { isAppLocked, currentProfile } = useData();
   
   useEffect(() => {
     if (!currentProfile) return;
@@ -40,12 +40,6 @@ const ThemeController = () => {
     }
   }, [currentProfile?.themePreference]);
 
-  return null;
-};
-
-const AppContent: React.FC = () => {
-  const { isAppLocked } = useData();
-  
   if (isAppLocked) {
     return <LockScreen />;
   }
@@ -68,12 +62,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <ToastProvider>
-        <DataProvider>
-          <ThemeController />
+      <DataProvider>
+        <ToastProvider>
           <AppContent />
-        </DataProvider>
-      </ToastProvider>
+        </ToastProvider>
+      </DataProvider>
     </ErrorBoundary>
   );
 };

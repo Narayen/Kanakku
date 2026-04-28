@@ -45,8 +45,22 @@ const Analytics: React.FC = () => {
     const data: {[key: string]: number} = {};
     if (!profileTransactions || !Array.isArray(profileTransactions)) return [];
     
+    // Get the start date based on timeRange
+    const now = new Date();
+    let startDate = new Date(0); // Default to all time
+    
+    switch (timeRange) {
+      case '1day': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '1week': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '1month': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      case '1year': startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); break;
+      case '3years': startDate = new Date(now.getTime() - 3 * 365 * 24 * 60 * 60 * 1000); break;
+      case '5years': startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000); break;
+      case '10years': startDate = new Date(now.getTime() - 10 * 365 * 24 * 60 * 60 * 1000); break;
+    }
+
     profileTransactions
-      .filter(t => t && t.type === TransactionType.EXPENSE)
+      .filter(t => new Date(t.date) >= startDate)
       .forEach(t => {
         const catName = categories.find(c => c.id === t.categoryId)?.name || 'Other';
         data[catName] = (data[catName] || 0) + (Number(t.amount) || 0);
@@ -54,7 +68,7 @@ const Analytics: React.FC = () => {
     return Object.entries(data)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [profileTransactions, categories]);
+  }, [profileTransactions, categories, timeRange]);
 
   const trendData = useMemo(() => {
     const now = new Date();
@@ -140,30 +154,72 @@ const Analytics: React.FC = () => {
   const globalSymbol = CURRENCIES.find(c => c.code === currentProfile?.currency)?.symbol || '₹';
 
   const tagData = useMemo(() => {
-    const data: {[key: string]: number} = {};
+    const data: {[key: string]: { income: number, expense: number }} = {};
+    
+    // Get the start date based on timeRange
+    const now = new Date();
+    let startDate = new Date(0); // Default to all time
+    
+    switch (timeRange) {
+      case '1day': startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); break;
+      case '1week': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
+      case '1month': startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); break;
+      case '1year': startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); break;
+      case '3years': startDate = new Date(now.getTime() - 3 * 365 * 24 * 60 * 60 * 1000); break;
+      case '5years': startDate = new Date(now.getTime() - 5 * 365 * 24 * 60 * 60 * 1000); break;
+      case '10years': startDate = new Date(now.getTime() - 10 * 365 * 24 * 60 * 60 * 1000); break;
+    }
+
     profileTransactions
-      .filter(t => t.type === TransactionType.EXPENSE && t.tags && t.tags.length > 0)
+      .filter(t => t.tags && t.tags.length > 0)
+      .filter(t => new Date(t.date) >= startDate)
       .forEach(t => {
         t.tags?.forEach(tag => {
-          data[tag] = (data[tag] || 0) + (Number(t.amount) || 0);
+          const trimmedTag = tag.trim();
+          if (trimmedTag) {
+            if (!data[trimmedTag]) data[trimmedTag] = { income: 0, expense: 0 };
+            if (t.type === TransactionType.INCOME) {
+              data[trimmedTag].income += (Number(t.amount) || 0);
+            } else {
+              data[trimmedTag].expense += (Number(t.amount) || 0);
+            }
+          }
         });
       });
     return Object.entries(data)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [profileTransactions]);
+      .map(([name, values]) => ({ name, ...values, total: values.income + values.expense }))
+      .sort((a, b) => b.total - a.total);
+  }, [profileTransactions, timeRange]);
 
   const maskMoney = (amount: number, symbol: string = globalSymbol) => 
     isPrivacy ? '****' : formatIndianCurrency(amount, symbol);
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto px-2 pb-20">
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-          <button onClick={togglePrivacyMode} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400">
-            {isPrivacy ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
+      <div className="flex flex-col gap-4 px-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Analytics</h1>
+            <button onClick={togglePrivacyMode} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors text-gray-400">
+              {isPrivacy ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {(['1day', '1week', '1month', '1year', '3years', '5years', '10years'] as TimeRange[]).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border ${
+                timeRange === range
+                  ? 'bg-primary-500 border-primary-500 text-white shadow-sm'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-primary-500'
+              }`}
+            >
+              {range.replace(/^1/, '1 ').replace('day', 'Day').replace('week', 'Week').replace('month', 'Month').replace('year', 'Year')}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -171,7 +227,7 @@ const Analytics: React.FC = () => {
       {pieData.length > 0 ? (
         <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Spendings Breakdown</h3>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Category Breakdown</h3>
             <span className="text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
               By Category
             </span>
@@ -244,25 +300,43 @@ const Analytics: React.FC = () => {
       {tagData.length > 0 && (
         <div className="bg-white dark:bg-cardbg p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Tag spending Analysis</h3>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Tag Analysis</h3>
             <span className="text-[10px] bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
               By Tags
             </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {tagData.slice(0, 6).map((tag) => {
-              const maxVal = tagData[0].value;
-              const width = (tag.value / maxVal) * 100;
+              const maxVal = tagData[0].total;
+              const incomeWidth = (tag.income / maxVal) * 100;
+              const expenseWidth = (tag.expense / maxVal) * 100;
               return (
-                <div key={tag.name} className="space-y-1">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-gray-700 dark:text-gray-300">#{tag.name}</span>
-                    <span className="font-bold text-gray-900 dark:text-white">{maskMoney(tag.value)}</span>
+                <div key={tag.name} className="space-y-1.5">
+                  <div className="flex justify-between items-end">
+                    <span className="font-semibold text-xs text-gray-700 dark:text-gray-300">#{tag.name}</span>
+                    <div className="flex gap-3 text-[10px]">
+                      {tag.income > 0 && (
+                        <div className="flex flex-col items-end">
+                          <span className="text-gray-400 uppercase font-medium tracking-tighter">Income</span>
+                          <span className="text-green-500 font-bold">{maskMoney(tag.income)}</span>
+                        </div>
+                      )}
+                      {tag.expense > 0 && (
+                        <div className="flex flex-col items-end">
+                          <span className="text-gray-400 uppercase font-medium tracking-tighter">Expense</span>
+                          <span className="text-red-500 font-bold">{maskMoney(tag.expense)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div className="h-2 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
                     <div 
-                      className="h-full bg-primary-500 rounded-full transition-all duration-500" 
-                      style={{ width: `${width}%` }}
+                      className="h-full bg-green-500 transition-all duration-500" 
+                      style={{ width: `${incomeWidth}%` }}
+                    />
+                    <div 
+                      className="h-full bg-red-500 transition-all duration-500" 
+                      style={{ width: `${expenseWidth}%` }}
                     />
                   </div>
                 </div>
@@ -282,19 +356,6 @@ const Analytics: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Trends</h3>
           <div className="flex gap-2">
-            <select 
-              value={timeRange} 
-              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="text-[10px] font-bold bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-primary-500 transition-all text-gray-600 dark:text-gray-400"
-            >
-              <option value="1day">1 Day</option>
-              <option value="1week">1 Week</option>
-              <option value="1month">1 Month</option>
-              <option value="1year">1 Year</option>
-              <option value="3years">3 Years</option>
-              <option value="5years">5 Years</option>
-              <option value="10years">10 Years</option>
-            </select>
             <select 
               value={chartType} 
               onChange={(e) => setChartType(e.target.value as ChartType)}

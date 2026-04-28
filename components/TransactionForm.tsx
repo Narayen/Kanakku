@@ -140,6 +140,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
         type,
         categoryId,
         date: dateTime,
+        time,
         note,
         tags: selectedTags
        });
@@ -152,6 +153,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, preSelectedB
         type,
         categoryId,
         date: dateTime,
+        time,
         note,
         tags: selectedTags
       });

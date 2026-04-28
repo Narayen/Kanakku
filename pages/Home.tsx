@@ -216,7 +216,7 @@ const Home: React.FC = () => {
            {profileTransactions.length === 0 ? (
              <div className="py-4 text-center text-xs text-gray-400">No transactions yet.</div>
            ) : (
-             <div className="divide-y divide-gray-50 dark:divide-gray-800/50">
+             <div className="">
                {profileTransactions.slice(0, 5).map(tx => {
                  const dateObj = new Date(tx.date || Date.now());
                  const book = getBook(tx.bookId);

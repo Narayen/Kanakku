@@ -113,10 +113,38 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setProfiles(loadedProfiles);
       setBooks(loadedBooks);
-      setTransactions(parsed.transactions || []);
+      const loadedTransactions = (parsed.transactions || []).map((t: any) => {
+          let time = t.time;
+          // If time is missing or default 00:00, try to find a better one
+          if (!time || time === '00:00') {
+              try {
+                  // Try ISO date first
+                  if (t.date && t.date.includes('T')) {
+                      const d = new Date(t.date);
+                      if (!isNaN(d.getTime())) {
+                          const extracted = d.toTimeString().split(' ')[0].substring(0, 5);
+                          if (extracted !== '00:00') time = extracted;
+                      }
+                  }
+                  
+                  // If still no better time, try createdAt
+                  if ((!time || time === '00:00') && t.createdAt) {
+                      const d = new Date(t.createdAt);
+                      time = d.toTimeString().split(' ')[0].substring(0, 5);
+                  }
+              } catch (e) {}
+          }
+          return { ...t, time: time || '00:00' };
+      });
+
+      setTransactions(loadedTransactions);
       // Load categories or fallback to default
       setCategories(parsed.categories || DEFAULT_CATEGORIES);
-      setAutopays(parsed.autopays || []);
+      const loadedAutopays = (parsed.autopays || []).map((ap: any) => {
+        if (ap.startTime) return ap;
+        return { ...ap, startTime: '00:00' };
+      });
+      setAutopays(loadedAutopays);
       
       const current = loadedProfiles.find((p: any) => p.isCurrent) || loadedProfiles[0];
       if (current?.isSecurityEnabled) {
@@ -489,6 +517,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
+  const deleteTransactions = (ids: string[]) => {
+    setTransactions(prev => prev.filter(t => !ids.includes(t.id)));
+  };
+
   // --- Autopay Actions ---
 
   const addAutopay = (autopayData: Omit<Autopay, 'id' | 'status' | 'lastProcessedAt'>) => {
@@ -576,7 +608,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let lastOccurrenceTime = lastProcessed;
       let apChanged = false;
       while (occurrenceToProcess <= now) {
-        const txDateStr = occurrenceToProcess.toISOString().split('T')[0];
+        const txDateStr = occurrenceToProcess.toISOString();
         const txTimeStr = occurrenceToProcess.toTimeString().split(' ')[0].substring(0, 5);
 
         const tx: Transaction = {
@@ -622,10 +654,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetAllData = () => {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(TAGS_STORAGE_KEY);
       setProfiles([INITIAL_PROFILE]);
       setBooks([INITIAL_BOOK]);
       setTransactions([]);
       setCategories(DEFAULT_CATEGORIES);
+      setAutopays([]);
+      setTagHistory([]);
       window.location.reload();
   };
 
@@ -791,6 +826,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (row['Amount'] && row['Date']) {
             const tags = row['Tags'] ? row['Tags'].split('|').filter(Boolean) : [];
+            let rowTime = row['Time'];
+            if (!rowTime && row['Date'] && row['Date'].includes('T')) {
+                try {
+                    const d = new Date(row['Date']);
+                    if (!isNaN(d.getTime())) {
+                        rowTime = d.toTimeString().split(' ')[0].substring(0, 5);
+                    }
+                } catch (e) {}
+            }
+
             newTransactions.push({
                 id: uuidv4(),
                 bookId: book.id,
@@ -798,7 +843,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 type: row['Type'] === 'INCOME' ? TransactionType.INCOME : TransactionType.EXPENSE,
                 categoryId: cat.id,
                 date: row['Date'],
-                time: row['Time'] || undefined,
+                time: rowTime || '00:00',
                 note: row['Note'] || '',
                 tags: tags.length > 0 ? tags : undefined,
                 createdAt: Date.now()
@@ -863,6 +908,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addTransaction,
     updateTransaction,
     deleteTransaction,
+    deleteTransactions,
     resetAllData,
     importData,
     exportData,

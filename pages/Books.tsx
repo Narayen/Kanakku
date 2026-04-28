@@ -13,12 +13,19 @@ import * as Icons from 'lucide-react';
 const Books: React.FC = () => {
   const { 
     currentProfile, books, transactions, addBook, updateBook, deleteBook, 
-    deleteTransaction, categories, autopays, toggleAutopayStatus, deleteAutopay 
+    deleteTransaction, deleteTransactions, categories, autopays, toggleAutopayStatus, deleteAutopay 
   } = useData();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+
+  // Multi-select state
+  const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
+  // Pagination state
+  const [visibleCount, setVisibleCount] = useState(30);
 
   const isPrivacy = currentProfile?.isPrivacyMode || false;
 
@@ -88,32 +95,76 @@ const Books: React.FC = () => {
   };
 
   const selectedBook = books.find(b => b.id === selectedBookId);
-  const bookTransactions = useMemo(() => {
+
+  const allBookTransactions = useMemo(() => {
     return transactions
       .filter(t => t.bookId === selectedBookId)
       .sort((a, b) => {
         const dateA = a.date ? new Date(a.date).getTime() : 0;
         const dateB = b.date ? new Date(b.date).getTime() : 0;
-        return dateB - dateA;
+        if (dateB !== dateA) return dateB - dateA;
+        // If dates are equal, sort by time (desc)
+        const timeA = a.time || '00:00';
+        const timeB = b.time || '00:00';
+        return timeB.localeCompare(timeA);
       });
   }, [transactions, selectedBookId]);
 
+  const bookTransactions = useMemo(() => {
+    return allBookTransactions.slice(0, visibleCount);
+  }, [allBookTransactions, visibleCount]);
+
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, Transaction[]> = {};
+    bookTransactions.forEach(tx => {
+      // Extract date part YYYY-MM-DD
+      const datePart = tx.date.split('T')[0];
+      if (!groups[datePart]) {
+        groups[datePart] = [];
+      }
+      groups[datePart].push(tx);
+    });
+    return groups;
+  }, [bookTransactions]);
+
   const bookStats = useMemo(() => {
-    const income = bookTransactions
+    const income = allBookTransactions
       .filter(t => t.type === TransactionType.INCOME)
       .reduce((acc, t) => acc + t.amount, 0);
-    const expense = bookTransactions
+    const expense = allBookTransactions
       .filter(t => t.type === TransactionType.EXPENSE)
       .reduce((acc, t) => acc + t.amount, 0);
     return { income, expense, total: income - expense };
-  }, [bookTransactions]);
+  }, [allBookTransactions]);
 
-  // Reset delete confirm state when switching books or closing detail view
+  // Reset states
   const handleBack = () => {
     setSelectedBookId(null);
     setSearchParams({});
     setShowDeleteConfirm(false);
     setConfirmDeleteTxId(null);
+    setIsMultiSelectMode(false);
+    setSelectedTxIds(new Set());
+    setVisibleCount(30);
+  };
+
+  const handleToggleSelectTx = (id: string) => {
+    const next = new Set(selectedTxIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedTxIds(next);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedTxIds.size > 0) {
+      deleteTransactions(Array.from(selectedTxIds));
+      showToast(`${selectedTxIds.size} transactions deleted`, "info");
+      setSelectedTxIds(new Set());
+      setIsMultiSelectMode(false);
+    }
   };
 
   const handleDeleteBook = () => {
@@ -209,7 +260,7 @@ const Books: React.FC = () => {
                     + Setup New
                 </button>
             </div>
-            <div className="divide-y divide-gray-50 dark:divide-gray-800">
+            <div className="">
                 {autopays.filter(a => a.bookId === selectedBookId).length === 0 ? (
                     <div className="p-6 text-center">
                         <p className="text-xs text-gray-400">No autopay transactions scheduled for this book.</p>
@@ -230,18 +281,20 @@ const Books: React.FC = () => {
                                                 {ap.status}
                                             </span>
                                         </div>
-                                        <p className="text-[10px] text-gray-500">
-                                            {ap.frequency} • {maskMoney(ap.amount, currencySymbol)}
-                                        </p>
-                                        {ap.tags && ap.tags.length > 0 && (
-                                          <div className="flex flex-wrap gap-1 mt-1">
-                                            {ap.tags.map(tag => (
-                                              <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
-                                                {tag}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        )}
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <p className="text-[10px] text-gray-500">
+                                                {ap.frequency} • {maskMoney(ap.amount, currencySymbol)}
+                                            </p>
+                                            {ap.tags && ap.tags.length > 0 && (
+                                              <div className="flex flex-wrap gap-1">
+                                                {ap.tags.map(tag => (
+                                                  <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
+                                                    {tag}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -347,103 +400,191 @@ const Books: React.FC = () => {
         {/* List */}
         <div className="bg-white dark:bg-cardbg rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
            <div className="px-5 py-4 border-b border-gray-50 dark:border-gray-800 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Transactions</h3>
-              <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full text-gray-500 font-bold">
-                 {bookTransactions.length} Total
-              </span>
+              <div className="flex items-center gap-3">
+                 <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Transactions</h3>
+                 {selectedTxIds.size > 0 && (
+                   <span className="text-[10px] bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 px-2 py-0.5 rounded-full font-bold">
+                     {selectedTxIds.size} Selected
+                   </span>
+                 )}
+              </div>
+              <div className="flex items-center gap-2">
+                 {isMultiSelectMode ? (
+                   <>
+                     {selectedTxIds.size > 0 && (
+                       <button 
+                         onClick={handleBulkDelete}
+                         className="text-[10px] font-bold text-red-500 uppercase tracking-widest hover:underline flex items-center gap-1"
+                       >
+                         <Trash2 size={12} /> Delete
+                       </button>
+                     )}
+                     <button 
+                        onClick={() => {
+                          setIsMultiSelectMode(false);
+                          setSelectedTxIds(new Set());
+                        }}
+                        className="text-[10px] font-bold text-gray-500 uppercase tracking-widest hover:underline"
+                     >
+                        Cancel
+                     </button>
+                   </>
+                 ) : (
+                   bookTransactions.length > 0 && (
+                     <button 
+                        onClick={() => setIsMultiSelectMode(true)}
+                        className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
+                     >
+                        Manage
+                     </button>
+                   )
+                 )}
+              </div>
            </div>
-           <div className="divide-y divide-gray-50 dark:divide-gray-800">
+
+           <div className="">
               {bookTransactions.length === 0 ? (
                   <div className="text-center py-12 text-gray-400">
                      <FolderOpen size={32} className="mx-auto mb-2 opacity-20" />
                      <p className="text-sm">No transactions in this book yet.</p>
                   </div>
               ) : (
-                  bookTransactions.map(tx => {
-                    const cat = categories.find(c => c.id === tx.categoryId);
-                    const dateObj = new Date(tx.date);
-                    const renderIcon = (iconName: string) => {
-                      try {
-                        const LucideIcon = (Icons as any)[iconName] || CircleHelp;
-                        return <LucideIcon size={16} className={cat?.color?.replace('bg-', 'text-')} />;
-                      } catch (e) {
-                        return <CircleHelp size={16} className={cat?.color?.replace('bg-', 'text-')} />;
-                      }
-                    };
-                    
-                    return (
-                       <div key={tx.id} className="p-4 flex justify-between items-center group hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                           <div className="flex items-center gap-3">
-                               <div className={`p-2 rounded-xl ${cat?.color || 'bg-gray-500'} bg-opacity-10 dark:bg-opacity-20 text-current`}>
-                                   {renderIcon(cat?.icon || '')}
-                               </div>
-                               <div>
-                                   <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">{cat?.name}</p>
-                                   <p className="text-[10px] text-gray-500 mt-0.5">
-                                     {dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                     {tx.note && ` • ${tx.note.length > 20 ? tx.note.substring(0, 20) + '...' : tx.note}`}
-                                   </p>
-                                   {tx.tags && tx.tags.length > 0 && (
-                                     <div className="flex flex-wrap gap-1 mt-1">
-                                       {tx.tags.map(tag => (
-                                         <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
-                                           {tag}
-                                         </span>
-                                       ))}
+                Object.entries(groupedTransactions)
+                  .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+                  .map(([date, groupTransactions]) => {
+                  const groupDate = new Date(date);
+                  return (
+                    <div key={date}>
+                      <div className="px-5 pt-4 pb-1 flex items-center">
+                         <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
+                           {groupDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                         </span>
+                      </div>
+                      <div className="">
+                        {groupTransactions.map(tx => {
+                          const cat = categories.find(c => c.id === tx.categoryId);
+                          const isSelected = selectedTxIds.has(tx.id);
+                          
+                          const renderIcon = (iconName: string) => {
+                            try {
+                              const LucideIcon = (Icons as any)[iconName] || CircleHelp;
+                              return <LucideIcon size={16} className={cat?.color?.replace('bg-', 'text-')} />;
+                            } catch (e) {
+                              return <CircleHelp size={16} className={cat?.color?.replace('bg-', 'text-')} />;
+                            }
+                          };
+                          
+                          return (
+                             <div 
+                               key={tx.id} 
+                               onClick={() => isMultiSelectMode && handleToggleSelectTx(tx.id)}
+                               className={`p-4 flex justify-between items-center group transition-colors cursor-pointer ${isSelected ? 'bg-primary-50/50 dark:bg-primary-900/10' : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/30'}`}
+                             >
+                                 <div className="flex items-center gap-3">
+                                     {isMultiSelectMode && (
+                                       <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-primary-600 border-primary-600' : 'border-gray-300 dark:border-gray-700'}`}>
+                                         {isSelected && <Icons.Check size={12} className="text-white" />}
+                                       </div>
+                                     )}
+                                     <div className={`p-2 rounded-xl ${cat?.color || 'bg-gray-500'} bg-opacity-10 dark:bg-opacity-20 text-current`}>
+                                         {renderIcon(cat?.icon || '')}
                                      </div>
-                                   )}
-                               </div>
-                           </div>
-                           <div className="flex items-center gap-1">
-                               <span className={`text-xs ${tx.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-500 dark:text-red-400'}`}>
-                                   {tx.type === TransactionType.INCOME ? '+' : '-'}
-                                   {maskMoney(tx.amount, currencySymbol)}
-                               </span>
-                               <div className="flex items-center ml-3 gap-2">
-                                 {confirmDeleteTxId === tx.id ? (
-                                   <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2">
-                                     <button 
-                                       onClick={() => {
-                                         deleteTransaction(tx.id);
-                                         setConfirmDeleteTxId(null);
-                                         showToast("Transaction deleted", "info");
-                                       }}
-                                       className="p-1 px-2 bg-red-500 text-white text-[10px] font-bold rounded-lg uppercase"
-                                     >
-                                       Delete
-                                     </button>
-                                     <button 
-                                       onClick={() => setConfirmDeleteTxId(null)}
-                                       className="p-1 px-2 bg-gray-100 dark:bg-gray-800 text-gray-500 text-[10px] font-bold rounded-lg uppercase"
-                                     >
-                                       No
-                                     </button>
-                                   </div>
-                                 ) : (
-                                   <>
-                                     <button 
-                                         onClick={() => handleEditTransaction(tx)}
-                                         className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
-                                         title="Edit"
-                                     >
-                                         <Pencil size={14} />
-                                     </button>
-                                     <button 
-                                         onClick={() => setConfirmDeleteTxId(tx.id)}
-                                         className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
-                                         title="Delete"
-                                     >
-                                         <Trash2 size={14} />
-                                     </button>
-                                   </>
-                                 )}
-                               </div>
-                           </div>
-                       </div>
-                    );
-                  })
+                                     <div>
+                                         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">{cat?.name}</p>
+                                         <div className="flex items-center gap-2 mt-0.5">
+                                            <p className="text-[10px] text-gray-500">
+                                              {tx.time || (tx.date ? new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : '00:00')}
+                                              {tx.note && ` • ${tx.note.length > 20 ? tx.note.substring(0, 20) + '...' : tx.note}`}
+                                            </p>
+                                            {tx.tags && tx.tags.length > 0 && (
+                                              <div className="flex flex-wrap gap-1">
+                                                {tx.tags.map(tag => (
+                                                  <span key={tag} className="text-[7px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1 py-0.5 rounded uppercase font-bold tracking-tighter">
+                                                    {tag}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            )}
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <div className="flex items-center gap-1">
+                                     <span className={`text-xs font-bold ${tx.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-500 dark:text-red-400'}`}>
+                                         {tx.type === TransactionType.INCOME ? '+' : '-'}
+                                         {maskMoney(tx.amount, currencySymbol)}
+                                     </span>
+                                     {!isMultiSelectMode && (
+                                       <div className="flex items-center ml-3 gap-2">
+                                         {confirmDeleteTxId === tx.id ? (
+                                           <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-2">
+                                             <button 
+                                               onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 deleteTransaction(tx.id);
+                                                 setConfirmDeleteTxId(null);
+                                                 showToast("Transaction deleted", "info");
+                                               }}
+                                               className="p-1 px-2 bg-red-500 text-white text-[10px] font-bold rounded-lg uppercase"
+                                             >
+                                               Delete
+                                             </button>
+                                             <button 
+                                               onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 setConfirmDeleteTxId(null);
+                                               }}
+                                               className="p-1 px-2 bg-gray-100 dark:bg-gray-800 text-gray-500 text-[10px] font-bold rounded-lg uppercase"
+                                             >
+                                               No
+                                             </button>
+                                           </div>
+                                         ) : (
+                                           <>
+                                             <button 
+                                                 onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   handleEditTransaction(tx);
+                                                 }}
+                                                 className="p-1.5 text-gray-400 hover:text-primary-600 transition-colors"
+                                                 title="Edit"
+                                             >
+                                                 <Pencil size={14} />
+                                             </button>
+                                             <button 
+                                                 onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setConfirmDeleteTxId(tx.id);
+                                                 }}
+                                                 className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                                                 title="Delete"
+                                             >
+                                                 <Trash2 size={14} />
+                                             </button>
+                                           </>
+                                         )}
+                                       </div>
+                                     )}
+                                 </div>
+                             </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
               )}
            </div>
+
+           {allBookTransactions.length > visibleCount && (
+             <div className="p-4 border-t border-gray-50 dark:border-gray-800 flex justify-center bg-gray-50/30 dark:bg-gray-800/20">
+                <button 
+                   onClick={() => setVisibleCount(prev => prev + 30)}
+                   className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline flex items-center gap-2"
+                >
+                   Load More (+30)
+                </button>
+             </div>
+           )}
         </div>
 
         {/* Delete Book Section */}

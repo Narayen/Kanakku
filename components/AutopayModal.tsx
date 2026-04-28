@@ -40,8 +40,9 @@ const AutopayModal: React.FC<AutopayModalProps> = ({ isOpen, onClose, bookId, ed
       setNote('');
       setSelectedTags([]);
       setFrequency(AutopayFrequency.MONTHLY);
-      setStartDate(new Date().toISOString().split('T')[0]);
-      setStartTime('00:00');
+      const now = new Date();
+      setStartDate(now.toISOString().split('T')[0]);
+      setStartTime(now.toTimeString().split(' ')[0].substring(0, 5));
       if (categories.length > 0) {
         setCategoryId(categories[0].id);
       }
